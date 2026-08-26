@@ -91,6 +91,31 @@
   }
   h1 em{ color:var(--mint); font-style:normal; -webkit-text-stroke:0.5px var(--mint); }
 
+  .occupancy-bar{
+    display:flex; align-items:center; gap:6px;
+    margin-top:8px; padding:7px 12px;
+    background:var(--bg-panel); border:1px solid var(--line);
+    border-radius:100px; width:fit-content; max-width:100%;
+  }
+  .occupancy-live-dot{
+    width:6px; height:6px; border-radius:50%; flex-shrink:0;
+    background:var(--mint);
+    animation:occupancyPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes occupancyPulse{
+    0%,100%{ opacity:1; box-shadow:0 0 0 0 rgba(62,227,199,0.5); }
+    50%{ opacity:0.6; box-shadow:0 0 0 3px rgba(62,227,199,0); }
+  }
+  .occupancy-text{ color:var(--muted2); font-size:10.5px; font-weight:600; white-space:nowrap; }
+  .occupancy-text b{ color:var(--text); font-weight:800; }
+  .occupancy-bar.level-low .occupancy-text b{ color:var(--mint-soft); }
+  .occupancy-bar.level-mid .occupancy-text b{ color:#FFD84D; }
+  .occupancy-bar.level-high .occupancy-text b{ color:var(--ember); }
+  .occupancy-bar.level-low .occupancy-live-dot{ background:var(--mint); }
+  .occupancy-bar.level-mid .occupancy-live-dot{ background:#FFD84D; }
+  .occupancy-bar.level-high .occupancy-live-dot{ background:var(--ember); }
+  .occupancy-count{ color:var(--muted2); font-size:10px; font-weight:700; padding-left:6px; border-left:1px solid rgba(255,255,255,0.08); white-space:nowrap; }
+
   /* ===== ZONE FLOOR ===== */
   .map-wrap{
     position:relative;
@@ -115,6 +140,15 @@
     z-index:2;
   }
   .zone-label:active{ transform:translate(-50%,0) scale(0.96); }
+  .occ-dot{
+    position:absolute; top:-3px; right:-3px;
+    width:9px; height:9px; border-radius:50%;
+    background:var(--mint); border:1.5px solid var(--bg-panel);
+    z-index:3;
+  }
+  .occ-dot.level-low{ background:var(--mint); }
+  .occ-dot.level-mid{ background:#FFD84D; }
+  .occ-dot.level-high{ background:var(--ember); }
   .zone-title{ color:var(--text); font-size:12.5px; font-weight:800; white-space:nowrap; }
   .zone-count{ color:var(--muted2); font-size:9.5px; margin-top:1px; white-space:nowrap; }
   .zone-label.complete .zone-title{ color:var(--mint-soft); }
@@ -372,6 +406,11 @@
   <div class="header-copy">
     <div class="eyebrow">GRAN SEOUL FITNESS</div>
     <h1>오늘의 헬스장 <em>맵</em></h1>
+    <div class="occupancy-bar" id="occupancyBar">
+      <span class="occupancy-live-dot"></span>
+      <span class="occupancy-text">실시간 혼잡도 · <b id="occupancyLevel">보통</b></span>
+      <span class="occupancy-count" id="occupancyCount">12/40명</span>
+    </div>
   </div>
 
   <div class="map-wrap">
@@ -434,18 +473,22 @@
     </svg>
 
     <div class="zone-label complete" id="label-weight" style="left:24.4%; top:48.2%;">
+      <span class="occ-dot" id="occ-dot-weight"></span>
       <div class="zone-title">웨이트</div>
       <div class="zone-count">3/4</div>
     </div>
     <div class="zone-label complete" id="label-cardio" style="left:71.9%; top:42.9%;">
+      <span class="occ-dot" id="occ-dot-cardio"></span>
       <div class="zone-title">유산소</div>
       <div class="zone-count">3/4</div>
     </div>
     <div class="zone-label" id="label-gx" style="left:24.4%; top:83.9%;">
+      <span class="occ-dot" id="occ-dot-gx"></span>
       <div class="zone-title">GX</div>
       <div class="zone-count">0/1</div>
     </div>
     <div class="zone-label" id="label-stretch" style="left:71.9%; top:78.7%;">
+      <span class="occ-dot" id="occ-dot-stretch"></span>
       <div class="zone-title">스트레칭</div>
       <div class="zone-count">0/3</div>
     </div>
@@ -589,6 +632,46 @@
     }
   };
 
+  // ===== 실시간 혼잡도 =====
+  // TODO: 지금은 데모용 샘플 수치예요. 실제로는 입퇴실 기록 장치(RNS 등)에서 존별 현재 인원수를
+  // 받아와 이 자리에 넣어주면 돼요 — 그 장치가 CSV/엑셀 내보내기나 관리자 웹 API를 제공한다면
+  // 그 데이터를 이 구조(zone별 count/capacity)로 변환해서 넣는 방식으로 연동할 수 있어요.
+  const OCCUPANCY = {
+    weight:  { count: 8,  capacity: 15 },
+    cardio:  { count: 12, capacity: 15 },
+    gx:      { count: 3,  capacity: 20 },
+    stretch: { count: 2,  capacity: 10 },
+  };
+  const OCC_LEVEL_LABEL = { low:'여유', mid:'보통', high:'혼잡' };
+
+  function occupancyLevel(count, capacity){
+    const pct = capacity > 0 ? count / capacity : 0;
+    if (pct < 0.4) return 'low';
+    if (pct < 0.75) return 'mid';
+    return 'high';
+  }
+
+  function renderOccupancy(){
+    let totalCount = 0, totalCapacity = 0;
+    ['weight','cardio','gx','stretch'].forEach(key => {
+      const o = OCCUPANCY[key];
+      const level = occupancyLevel(o.count, o.capacity);
+      totalCount += o.count;
+      totalCapacity += o.capacity;
+      const dot = document.getElementById('occ-dot-' + key);
+      dot.classList.remove('level-low', 'level-mid', 'level-high');
+      dot.classList.add('level-' + level);
+      dot.title = `${OCC_LEVEL_LABEL[level]} · ${o.count}명 이용 중`;
+    });
+
+    const overallLevel = occupancyLevel(totalCount, totalCapacity);
+    const bar = document.getElementById('occupancyBar');
+    bar.classList.remove('level-low', 'level-mid', 'level-high');
+    bar.classList.add('level-' + overallLevel);
+    document.getElementById('occupancyLevel').textContent = OCC_LEVEL_LABEL[overallLevel];
+    document.getElementById('occupancyCount').textContent = `${totalCount}/${totalCapacity}명`;
+  }
+
   // 미션은 순서 상관없이 원하는 대로 완료할 수 있어요. 다만 스탬프(인증)는 하루에 한 번만 찍을 수 있어요.
   const DEFAULT_DONE_IDS = ['treadmill','bike','foamroll','back','chest','row']; // 데모: 지금까지 6개 완료한 상태
   let doneIds = new Set(DEFAULT_DONE_IDS);
@@ -717,8 +800,10 @@
     currentZoneKey = zoneKey;
     const zone = ZONES[zoneKey];
     const done = zone.missions.filter(m => m.status === 'done').length;
+    const occ = OCCUPANCY[zoneKey];
+    const occLevel = occupancyLevel(occ.count, occ.capacity);
     sheetTitle.textContent = zone.name;
-    sheetSub.textContent = `${zone.missions.length}개 미션 중 ${done}개 완료`;
+    sheetSub.textContent = `${zone.missions.length}개 미션 중 ${done}개 완료 · 지금 ${OCC_LEVEL_LABEL[occLevel]} (${occ.count}명)`;
     sheetList.innerHTML = zone.missions.map(m => `
       <div class="mission-row ${m.status}" data-id="${m.id}">
         <div class="mission-check ${m.status}">${checkIcon(m.status)}</div>
@@ -897,6 +982,7 @@
   }
 
   updateGauge();
+  renderOccupancy();
 </script>
 
 </body>
