@@ -422,7 +422,7 @@
     </svg>
 
     <div class="success-title" id="successTitle">어깨, <em>클리어!</em></div>
-    <div class="success-sub" id="successSub">호랑이가 한 존 더 가까워졌어요.</div>
+    <div class="success-sub" id="successSub">회원님! 조금 더 힘내세요! 가까워졌어요!</div>
 
     <div class="reward-card">
       <div class="reward-stamp">
@@ -554,7 +554,7 @@
     const doneAfter = Object.keys(progress.photos).length;
     const pct = Math.round(doneAfter / pending.total * 100);
     document.getElementById('successTitle').innerHTML = `${pending.missionName}, <em>클리어!</em>`;
-    document.getElementById('successSub').textContent = `${character.name}${josa(character.name, '이', '가')} 한 존 더 가까워졌어요.`;
+    document.getElementById('successSub').textContent = `${character.name}님! 조금 더 힘내세요! 가까워졌어요!`;
     document.getElementById('progressCount').textContent = `${doneAfter}/${pending.total}`;
     document.getElementById('progressPct').textContent = `${pct}%`;
     document.getElementById('progressFill').style.width = pct + '%';
