@@ -614,6 +614,11 @@
       { name:'덤벨존', img:'images/equipment/shoulder-dumbbell.jpg' },
       { name:'케이블(펑셔널 트레이너)', img:'images/equipment/shoulder-cable.jpg' },
     ],
+    abs: [
+      { name:'백익스텐션', img:'images/equipment/core-backext.jpg' },
+      { name:'복근 벤치', img:'images/equipment/core-abbench.jpg' },
+      { name:'TOTAL ABDOMINAL', img:'images/equipment/core-totalab.jpg' },
+    ],
     treadmill: [
       { name:'러닝머신', img:'images/equipment/cardio-treadmill.jpg' },
       { name:'무동력머신', img:'images/equipment/cardio-manual.jpg' },
@@ -622,12 +627,11 @@
     ],
     bike: [
       { name:'사이클', img:'images/equipment/cardio-bike.jpg' },
-    ],
-    row: [
       { name:'로잉머신', img:'images/equipment/cardio-row.jpg' },
-    ],
-    stepmill: [
       { name:'천국의 계단', img:'images/equipment/cardio-stepmill.jpg' },
+    ],
+    gxclass: [
+      { name:'매트', img:'images/equipment/stretch-foamroll.jpg' },
     ],
     foamroll: [
       { name:'폼롤러', img:'images/equipment/stretch-foamroll.jpg' },
@@ -635,11 +639,6 @@
     matstretch: [
       { name:'FLEXABILITY ANTERIOR', img:'images/equipment/stretch-anterior.jpg' },
       { name:'FLEXABILITY POSTERIOR', img:'images/equipment/stretch-posterior.jpg' },
-    ],
-    cooldown: [
-      { name:'백익스텐션', img:'images/equipment/core-backext.jpg' },
-      { name:'복근 벤치', img:'images/equipment/core-abbench.jpg' },
-      { name:'TOTAL ABDOMINAL', img:'images/equipment/core-totalab.jpg' },
     ],
   };
 
@@ -651,15 +650,14 @@
         { id:'chest', name:'가슴', week:2, sets:['3세트','12회'] },
         { id:'legs', name:'하체', week:3, sets:['4세트','10회'] },
         { id:'shoulder', name:'어깨', week:3, sets:['3세트','12회','사이드레터럴'] },
+        { id:'abs', name:'복근', week:4, sets:['3세트','15회'] },
       ]
     },
     cardio: {
       name:'유산소',
       missions:[
         { id:'treadmill', name:'러닝머신', week:1, sets:['20분','경사 3%'] },
-        { id:'bike', name:'사이클', week:1, sets:['15분'] },
-        { id:'row', name:'로잉머신', week:2, sets:['10분'] },
-        { id:'stepmill', name:'스텝밀', week:4, sets:['10분'] },
+        { id:'bike', name:'사이클·로잉·스텝밀', week:2, sets:['15분'] },
       ]
     },
     gx: {
@@ -672,7 +670,7 @@
       name:'스트레칭',
       missions:[
         { id:'foamroll', name:'폼롤러', week:1, sets:['5분'] },
-        { id:'matstretch', name:'매트 스트레칭', week:3, sets:['10분'] },
+        { id:'matstretch', name:'머신 스트레칭', week:3, sets:['10분'] },
         { id:'cooldown', name:'쿨다운', week:4, sets:['5분'] },
       ]
     }
@@ -743,7 +741,7 @@
   }
 
   // 미션은 순서 상관없이 원하는 대로 완료할 수 있어요. 다만 스탬프(인증)는 하루에 한 번만 찍을 수 있어요.
-  const DEFAULT_DONE_IDS = ['treadmill','bike','foamroll','back','chest','row']; // 데모: 지금까지 6개 완료한 상태
+  const DEFAULT_DONE_IDS = ['treadmill','bike','foamroll','back','chest']; // 데모: 지금까지 5개 완료한 상태
   let doneIds = new Set(DEFAULT_DONE_IDS);
   let lastCertifyDate = null; // 'YYYY-MM-DD' — 오늘 이미 스탬프를 찍었는지 확인용
 
