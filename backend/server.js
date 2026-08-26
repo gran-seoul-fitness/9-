@@ -1,24 +1,29 @@
 // 그랑서울 피트니스 - 혼잡도 API 서버
 //
-// 입퇴실 기록 장치(RNS 등)가 내보낸 CSV를 읽어서 "지금 헬스장에 몇 명이 있는지"를
-// 계산해 JSON으로 내려주는 아주 작은 서버예요. 외부 라이브러리 없이 Node.js 기본
-// 기능만 사용하므로 `node server.js`로 바로 실행할 수 있어요.
+// 입퇴실 기록 장치(RNS)가 내보낸 "시설물 이용현황" 파일을 읽어서 "지금 몇 명이
+// 있는지"를 계산해 JSON으로 내려주는 아주 작은 서버예요. 외부 라이브러리 없이
+// Node.js 기본 기능만 사용하므로 `node server.js`로 바로 실행할 수 있어요.
 //
 // 실행: node server.js
 // 확인: http://localhost:8787/api/occupancy
 //
-// 실제 장치와 연동하는 방법:
-//  1) data/checkins.csv 를 실제 내보내기 파일로 덮어써주세요 (파일명은 같아야 해요).
-//  2) 컬럼 형식이 다르면 이 파일의 parseCsv()/computeOccupancy() 부분만 실제 컬럼에
-//     맞춰 고치면 돼요 — 실제 내보내기 파일 샘플을 보내주시면 그 부분은 제가 맞춰드릴게요.
-//  3) RNS가 폴더에 파일을 자동으로 갱신해주는 기능이 있다면, 이 서버는 매 요청마다
-//     파일을 새로 읽기 때문에 폴더 갱신만으로 최신값이 반영돼요. 그런 기능이 없다면
-//     당분간은 사람이 새 내보내기 파일로 이 경로의 파일을 주기적으로 바꿔줘야 해요.
+// ===== 실제 장치 데이터 형식 (관리자 화면에서 확인한 컬럼) =====
+// 순번, 회원정보, 이용락카, 키번호, 성별, 회원구분, 이용대상, 입장시각, 퇴실시각
+// - 한 행 = 한 번의 방문(입장~퇴실). 로그가 아니라 방문 단위 레코드예요.
+// - 퇴실시각이 비어있으면 아직 안에 있는 사람이에요. → 이 개수가 "현재 인원"이에요.
+// - 이용락카는 "여자사우나"/"남자사우나"처럼 성별 락커 구분이라, 웨이트/유산소/GX/
+//   스트레칭 같은 운동존 정보는 이 장치로는 알 수 없어요. 그래서 구역별 인원은
+//   항상 config.json의 구역 정원 비율로 "추정"해서 채워요 (전체 인원만 실측치).
 //
-// 지금 이 장치는 보통 "입구 하나"에서 전체 인원만 체크하는 경우가 많아서, 구역별
-// (웨이트/유산소/GX/스트레칭) 인원은 실제로 못 잴 가능성이 높아요. 그래서 전체 인원은
-// 실제 계산값을, 구역별 인원은 config.json의 구역 비중으로 "추정"해서 채워요. 만약
-// CSV에 zone 컬럼이 실제로 채워져 있다면(구역별 리더가 따로 있는 경우) 그 값을 그대로 써요.
+// ===== 실제 데이터로 바꾸는 방법 =====
+// 1) 관리자 화면의 [Excel] 또는 [Text] 내보내기로 실제 파일을 받아서
+//    data/checkins.csv 자리에 덮어써주세요 (컬럼 구성이 위와 같다면 그대로 동작해요).
+// 2) 내보낸 파일이 엑셀(.xlsx)이면 "다른 이름으로 저장 → CSV" 로 한 번 변환해주세요.
+// 3) 실제로 내보내보니 컬럼 순서/이름/인코딩(EUC-KR 등)이 다르면 알려주세요 —
+//    parseCsv()/computeOccupancy() 부분만 그 형식에 맞게 고치면 돼요.
+// 4) 이 서버는 요청마다 파일을 새로 읽으므로, 파일 내용만 최신으로 유지되면
+//    재시작 없이 최신값이 반영돼요. 예약 내보내기 기능이 있다면 그 파일이 이 자리에
+//    떨어지도록 설정하는 걸 추천해요.
 
 const http = require('http');
 const fs = require('fs');
@@ -43,63 +48,23 @@ function parseCsv(text) {
   });
 }
 
-// rows: [{ id, timestamp, type: 'IN'|'OUT', zone }]
+// rows: [{ 순번, 회원정보, 이용락카, 키번호, 성별, 회원구분, 이용대상, 입장시각, 퇴실시각 }]
+// 퇴실시각이 빈 행 = 아직 시설에 있는 사람 → 그 개수가 현재 총 인원이에요.
 function computeOccupancy(rows, config) {
-  rows = rows.slice().sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  const totalCount = rows.filter((r) => !r['퇴실시각']).length;
 
-  const byId = new Map(); // id -> { inside, zone }
-  let anonymousBalance = 0; // id가 없는 행을 위한 보조 카운터
-  let sawZoneData = false;
-
-  for (const row of rows) {
-    const type = (row.type || '').toUpperCase();
-    const zone = row.zone || '';
-    if (zone) sawZoneData = true;
-
-    if (row.id) {
-      const prev = byId.get(row.id) || { inside: false, zone: null };
-      if (type === 'IN') { prev.inside = true; if (zone) prev.zone = zone; }
-      else if (type === 'OUT') { prev.inside = false; }
-      byId.set(row.id, prev);
-    } else {
-      if (type === 'IN') anonymousBalance++;
-      else if (type === 'OUT') anonymousBalance--;
-    }
-  }
-
-  const realZoneCounts = {};
-  let totalFromIds = 0;
-  byId.forEach((v) => {
-    if (!v.inside) return;
-    totalFromIds++;
-    if (v.zone && config.byZone[v.zone] !== undefined) {
-      realZoneCounts[v.zone] = (realZoneCounts[v.zone] || 0) + 1;
-    }
-  });
-
-  const totalCount = Math.max(0, totalFromIds + anonymousBalance);
+  // 이 장치는 운동존(웨이트/유산소/GX/스트레칭) 구분 없이 전체 인원만 알려주기
+  // 때문에, 구역별 인원은 항상 설정된 정원 비율로 추정해서 채워요.
   const zoneKeys = Object.keys(config.byZone);
+  const capacityTotal = zoneKeys.reduce((sum, z) => sum + config.byZone[z], 0);
   const zones = {};
-
-  const haveFullZoneBreakdown = sawZoneData &&
-    zoneKeys.every((z) => realZoneCounts[z] !== undefined) &&
-    zoneKeys.reduce((sum, z) => sum + (realZoneCounts[z] || 0), 0) === totalCount;
-
-  if (haveFullZoneBreakdown) {
-    zoneKeys.forEach((z) => {
-      zones[z] = { count: realZoneCounts[z] || 0, capacity: config.byZone[z], estimated: false };
-    });
-  } else {
-    // 구역별 실측 데이터가 없으면, 설정된 구역 정원 비중으로 추정해서 채워요.
-    const capacityTotal = zoneKeys.reduce((sum, z) => sum + config.byZone[z], 0);
-    let distributed = 0;
-    zoneKeys.forEach((z, i) => {
-      const isLast = i === zoneKeys.length - 1;
-      const share = isLast ? totalCount - distributed : Math.round(totalCount * (config.byZone[z] / capacityTotal));
-      distributed += share;
-      zones[z] = { count: Math.max(0, share), capacity: config.byZone[z], estimated: true };
-    });
-  }
+  let distributed = 0;
+  zoneKeys.forEach((z, i) => {
+    const isLast = i === zoneKeys.length - 1;
+    const share = isLast ? totalCount - distributed : Math.round(totalCount * (config.byZone[z] / capacityTotal));
+    distributed += share;
+    zones[z] = { count: Math.max(0, share), capacity: config.byZone[z], estimated: true };
+  });
 
   return {
     totalCount,
