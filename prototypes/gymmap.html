@@ -115,6 +115,7 @@
   .occupancy-bar.level-mid .occupancy-live-dot{ background:#FFD84D; }
   .occupancy-bar.level-high .occupancy-live-dot{ background:var(--ember); }
   .occupancy-count{ color:var(--muted2); font-size:10px; font-weight:700; padding-left:6px; border-left:1px solid rgba(255,255,255,0.08); white-space:nowrap; }
+  .occupancy-source{ color:var(--muted2); font-size:9px; font-weight:600; padding-left:6px; border-left:1px solid rgba(255,255,255,0.08); white-space:nowrap; opacity:0.7; }
 
   /* ===== ZONE FLOOR ===== */
   .map-wrap{
@@ -410,6 +411,7 @@
       <span class="occupancy-live-dot"></span>
       <span class="occupancy-text">실시간 혼잡도 · <b id="occupancyLevel">보통</b></span>
       <span class="occupancy-count" id="occupancyCount">12/40명</span>
+      <span class="occupancy-source" id="occupancySource">샘플 데이터</span>
     </div>
   </div>
 
@@ -633,15 +635,17 @@
   };
 
   // ===== 실시간 혼잡도 =====
-  // TODO: 지금은 데모용 샘플 수치예요. 실제로는 입퇴실 기록 장치(RNS 등)에서 존별 현재 인원수를
-  // 받아와 이 자리에 넣어주면 돼요 — 그 장치가 CSV/엑셀 내보내기나 관리자 웹 API를 제공한다면
-  // 그 데이터를 이 구조(zone별 count/capacity)로 변환해서 넣는 방식으로 연동할 수 있어요.
-  const OCCUPANCY = {
+  // 로컬 혼잡도 API(backend/server.js)가 켜져 있으면 그 값을 쓰고, 없으면 아래 샘플
+  // 수치로 조용히 대체돼요. backend/README.md 참고해서 실제 입퇴실 기록과 연동하세요.
+  const OCCUPANCY_API_URL = 'http://localhost:8787/api/occupancy';
+  const FALLBACK_OCCUPANCY = {
     weight:  { count: 8,  capacity: 15 },
     cardio:  { count: 12, capacity: 15 },
     gx:      { count: 3,  capacity: 20 },
     stretch: { count: 2,  capacity: 10 },
   };
+  let OCCUPANCY = FALLBACK_OCCUPANCY;
+  let occupancyIsLive = false;
   const OCC_LEVEL_LABEL = { low:'여유', mid:'보통', high:'혼잡' };
 
   function occupancyLevel(count, capacity){
@@ -649,6 +653,17 @@
     if (pct < 0.4) return 'low';
     if (pct < 0.75) return 'mid';
     return 'high';
+  }
+
+  async function fetchLiveOccupancy(){
+    try {
+      const res = await fetch(OCCUPANCY_API_URL, { signal: AbortSignal.timeout(1500) });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.zones || null;
+    } catch (e) {
+      return null;
+    }
   }
 
   function renderOccupancy(){
@@ -661,7 +676,7 @@
       const dot = document.getElementById('occ-dot-' + key);
       dot.classList.remove('level-low', 'level-mid', 'level-high');
       dot.classList.add('level-' + level);
-      dot.title = `${OCC_LEVEL_LABEL[level]} · ${o.count}명 이용 중`;
+      dot.title = `${OCC_LEVEL_LABEL[level]} · ${o.count}명 이용 중${o.estimated ? ' (추정)' : ''}`;
     });
 
     const overallLevel = occupancyLevel(totalCount, totalCapacity);
@@ -670,6 +685,14 @@
     bar.classList.add('level-' + overallLevel);
     document.getElementById('occupancyLevel').textContent = OCC_LEVEL_LABEL[overallLevel];
     document.getElementById('occupancyCount').textContent = `${totalCount}/${totalCapacity}명`;
+    document.getElementById('occupancySource').textContent = occupancyIsLive ? '연동됨' : '샘플 데이터';
+  }
+
+  async function refreshOccupancy(){
+    const live = await fetchLiveOccupancy();
+    if (live){ OCCUPANCY = live; occupancyIsLive = true; }
+    else { OCCUPANCY = FALLBACK_OCCUPANCY; occupancyIsLive = false; }
+    renderOccupancy();
   }
 
   // 미션은 순서 상관없이 원하는 대로 완료할 수 있어요. 다만 스탬프(인증)는 하루에 한 번만 찍을 수 있어요.
@@ -982,7 +1005,8 @@
   }
 
   updateGauge();
-  renderOccupancy();
+  refreshOccupancy();
+  setInterval(refreshOccupancy, 30000); // 백엔드가 켜져 있으면 30초마다 최신값으로 갱신
 </script>
 
 </body>

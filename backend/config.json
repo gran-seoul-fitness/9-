@@ -1,0 +1,10 @@
+{
+  "port": 8787,
+  "capacityTotal": 60,
+  "byZone": {
+    "weight": 15,
+    "cardio": 15,
+    "gx": 20,
+    "stretch": 10
+  }
+}
