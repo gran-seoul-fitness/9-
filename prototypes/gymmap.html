@@ -631,8 +631,7 @@
   };
 
   // 미션은 순서 상관없이 원하는 대로 완료할 수 있어요. 다만 스탬프(인증)는 하루에 한 번만 찍을 수 있어요.
-  const DEFAULT_DONE_IDS = ['treadmill','bike','foamroll','back','chest']; // 데모: 지금까지 5개 완료한 상태
-  let doneIds = new Set(DEFAULT_DONE_IDS);
+  let doneIds = new Set();
   let lastCertifyDate = null; // 'YYYY-MM-DD' — 오늘 이미 스탬프를 찍었는지 확인용
 
   function todayStr(){
@@ -658,10 +657,8 @@
     try {
       let saved = JSON.parse(localStorage.getItem('gsProgress') || 'null');
       if (!saved){
-        // 최초 방문: 데모로 완료된 상태를 실제 저장소에 기록해서 이후 화면들과 완료 개수가 어긋나지 않게 함
-        const seedPhotos = {};
-        DEFAULT_DONE_IDS.forEach(id => { seedPhotos[id] = (EQUIP_OPTIONS[id] || [])[0]?.img || ''; });
-        saved = { photos: seedPhotos };
+        // 최초 방문: 인증 기록 없이 시작
+        saved = { photos: {} };
         localStorage.setItem('gsProgress', JSON.stringify(saved));
       }
       if (saved.photos){
