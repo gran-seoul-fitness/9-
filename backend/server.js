@@ -10,6 +10,7 @@
 
 const http = require('http');
 const { loadConfig, getOccupancy, saveManualOccupancy } = require('./occupancy');
+const ADMIN_PIN = '7777';
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -40,6 +41,11 @@ const server = http.createServer(async (req, res) => {
   if (req.url === '/api/occupancy/manual' && req.method === 'POST') {
     try {
       const body = await readJsonBody(req);
+      if (body.pin !== ADMIN_PIN) {
+        res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'PIN이 올바르지 않아요' }));
+        return;
+      }
       const totalCount = parseInt(body.totalCount, 10);
       if (Number.isNaN(totalCount) || totalCount < 0) {
         res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });

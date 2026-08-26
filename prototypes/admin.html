@@ -82,11 +82,61 @@
     display:block; text-align:center; margin-top:18px;
     color:var(--muted2); font-size:11.5px; text-decoration:none;
   }
+
+  /* ===== PIN 화면 ===== */
+  .pin-dots{ display:flex; justify-content:center; gap:14px; margin:28px 0 22px; }
+  .pin-dot{
+    width:16px; height:16px; border-radius:50%;
+    border:1.5px solid rgba(255,255,255,0.18);
+    background:var(--bg-panel);
+    transition:background .12s ease, border-color .12s ease, transform .12s ease;
+  }
+  .pin-dot.filled{ background:var(--mint); border-color:var(--mint); transform:scale(1.1); }
+  .pin-dots.error{ animation:pinShake .35s ease; }
+  @keyframes pinShake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-8px); }
+    75%{ transform:translateX(8px); }
+  }
+  .pin-keypad{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .pin-key{
+    padding:16px 0; border-radius:14px;
+    background:var(--bg-panel); border:1px solid rgba(255,255,255,0.06);
+    color:var(--text); font-size:19px; font-weight:700;
+    cursor:pointer; user-select:none; text-align:center;
+  }
+  .pin-key:active{ background:var(--bg-panel-2); transform:scale(0.96); }
+  .pin-key.empty{ visibility:hidden; }
+  .pin-error{
+    text-align:center; color:var(--ember); font-size:11.5px; font-weight:700;
+    height:16px; margin-top:12px; opacity:0; transition:opacity .2s ease;
+  }
+  .pin-error.show{ opacity:1; }
 </style>
 </head>
 <body>
 
-<div class="card">
+<div class="card" id="pinCard">
+  <div class="eyebrow">GRAN SEOUL FITNESS · 관리자</div>
+  <h1>PIN을 입력해주세요</h1>
+  <p class="sub">직원 전용 화면이에요. 4자리 PIN을 입력하면 들어갈 수 있어요.</p>
+
+  <div class="pin-dots" id="pinDots">
+    <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+  </div>
+
+  <div class="pin-keypad" id="pinKeypad">
+    <div class="pin-key" data-key="1">1</div><div class="pin-key" data-key="2">2</div><div class="pin-key" data-key="3">3</div>
+    <div class="pin-key" data-key="4">4</div><div class="pin-key" data-key="5">5</div><div class="pin-key" data-key="6">6</div>
+    <div class="pin-key" data-key="7">7</div><div class="pin-key" data-key="8">8</div><div class="pin-key" data-key="9">9</div>
+    <div class="pin-key empty"></div><div class="pin-key" data-key="0">0</div><div class="pin-key" data-key="back">⌫</div>
+  </div>
+
+  <div class="pin-error" id="pinError">PIN이 맞지 않아요</div>
+  <a class="back-link" href="gymmap.html">‹ 회원 화면으로</a>
+</div>
+
+<div class="card" id="counterCard" style="display:none;">
   <div class="eyebrow">GRAN SEOUL FITNESS · 관리자</div>
   <h1>지금 몇 명 있어요?</h1>
   <p class="sub">입장/퇴장할 때마다 +/-로 눌러주시면 회원 앱의 "실시간 혼잡도"에 바로 반영돼요.</p>
@@ -114,6 +164,54 @@
 </div>
 
 <script>
+  const ADMIN_PIN = '7777';
+
+  const pinCard = document.getElementById('pinCard');
+  const counterCard = document.getElementById('counterCard');
+  const pinDots = document.querySelectorAll('.pin-dot');
+  const pinDotsWrap = document.getElementById('pinDots');
+  const pinKeypad = document.getElementById('pinKeypad');
+  const pinError = document.getElementById('pinError');
+  let pinEntry = '';
+
+  function renderPinDots(){
+    pinDots.forEach((dot, i) => dot.classList.toggle('filled', i < pinEntry.length));
+  }
+
+  function unlockAdmin(){
+    sessionStorage.setItem('gsAdminUnlocked', '1');
+    pinCard.style.display = 'none';
+    counterCard.style.display = 'block';
+    loadCurrent();
+  }
+
+  pinKeypad.addEventListener('click', (e) => {
+    const key = e.target.dataset.key;
+    if (!key) return;
+    pinError.classList.remove('show');
+    if (key === 'back'){
+      pinEntry = pinEntry.slice(0, -1);
+      renderPinDots();
+      return;
+    }
+    if (pinEntry.length >= 4) return;
+    pinEntry += key;
+    renderPinDots();
+    if (pinEntry.length === 4){
+      if (pinEntry === ADMIN_PIN){
+        unlockAdmin();
+      } else {
+        pinDotsWrap.classList.add('error');
+        pinError.classList.add('show');
+        setTimeout(() => {
+          pinDotsWrap.classList.remove('error');
+          pinEntry = '';
+          renderPinDots();
+        }, 400);
+      }
+    }
+  });
+
   const countDisplay = document.getElementById('countDisplay');
   const minusBtn = document.getElementById('minusBtn');
   const plusBtn = document.getElementById('plusBtn');
@@ -161,8 +259,9 @@
       const res = await fetch('/api/occupancy/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ totalCount: current }),
+        body: JSON.stringify({ totalCount: current, pin: ADMIN_PIN }),
       });
+      if (!res.ok) throw new Error('save failed');
       const data = await res.json();
       updatedAtEl.textContent = timeAgo(data.updatedAt);
       flashSaved();
@@ -180,8 +279,10 @@
     exactInput.value = '';
   });
 
-  loadCurrent();
-  setInterval(loadCurrent, 15000);
+  if (sessionStorage.getItem('gsAdminUnlocked') === '1'){
+    unlockAdmin();
+  }
+  setInterval(() => { if (counterCard.style.display !== 'none') loadCurrent(); }, 15000);
 </script>
 
 </body>

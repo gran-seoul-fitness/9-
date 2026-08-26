@@ -14,6 +14,7 @@ const path = require('path');
 const { getOccupancy, loadConfig, saveManualOccupancy } = require('./backend/occupancy');
 
 const PROTOTYPES_DIR = path.join(__dirname, 'prototypes');
+const ADMIN_PIN = '7777';
 
 const PAGES = {
   '/': 'characterselect.html',
@@ -54,6 +55,11 @@ const server = http.createServer(async (req, res) => {
   if (url === '/api/occupancy/manual' && req.method === 'POST') {
     try {
       const body = await readJsonBody(req);
+      if (body.pin !== ADMIN_PIN) {
+        res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'PIN이 올바르지 않아요' }));
+        return;
+      }
       const totalCount = parseInt(body.totalCount, 10);
       if (Number.isNaN(totalCount) || totalCount < 0) {
         res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
