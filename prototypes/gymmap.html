@@ -183,7 +183,7 @@
     border:1px solid var(--line);
     border-radius:14px;
     padding:9px 14px;
-    margin-bottom:10px;
+    margin-bottom:4px;
     margin-left:66px;
     display:inline-block;
   }
@@ -220,6 +220,7 @@
     filter:drop-shadow(0 6px 10px rgba(0,0,0,0.4)); margin-bottom:2px;
     animation:avatarBob 2.6s ease-in-out infinite;
     transform-origin:bottom center;
+    cursor:pointer;
   }
   .gauge-avatar.nod{ animation:avatarNod 0.5s ease-out; }
   .gauge-track{
@@ -595,7 +596,7 @@
     back: [
       { name:'랫풀다운', img:'images/equipment/back-lat.jpg' },
       { name:'로우머신', img:'images/equipment/back-lowrow.jpg' },
-      { name:'케이블(크로스오버)', img:'images/equipment/back-cable.jpg' },
+      { name:'암풀다운·펑셔널 트레이닝', img:'images/equipment/back-cable.jpg' },
     ],
     chest: [
       { name:'체스트프레스', img:'images/equipment/chest-press.jpg' },
@@ -650,7 +651,7 @@
         { id:'chest', name:'가슴', week:2, sets:['3세트','12회'] },
         { id:'legs', name:'하체', week:3, sets:['4세트','10회'] },
         { id:'shoulder', name:'어깨', week:3, sets:['3세트','12회','사이드레터럴'] },
-        { id:'abs', name:'복근', week:4, sets:['3세트','15회'] },
+        { id:'abs', name:'코어', week:4, sets:['3세트','15회'] },
       ]
     },
     cardio: {
@@ -1025,6 +1026,8 @@
     return 'start';
   }
 
+  let nodResetTimer = null;
+
   function playBubbleMessage(text){
     const bubbleEl = document.getElementById('gaugeMsg');
     const avatarEl = document.querySelector('.gauge-avatar');
@@ -1036,6 +1039,18 @@
     avatarEl.classList.remove('nod');
     void avatarEl.offsetWidth;
     avatarEl.classList.add('nod');
+    // nod는 1회성 모션이라 끝나면 다시 빼줘야 평소 bob 애니메이션으로 돌아옴
+    clearTimeout(nodResetTimer);
+    nodResetTimer = setTimeout(() => avatarEl.classList.remove('nod'), 500);
+  }
+
+  function startBubbleRotation(){
+    if (msgRotateTimer) clearInterval(msgRotateTimer);
+    msgRotateTimer = setInterval(() => {
+      const pool = MESSAGE_POOLS[currentTier];
+      msgIndex = (msgIndex + 1) % pool.length;
+      playBubbleMessage(pool[msgIndex]);
+    }, 3800);
   }
 
   function setMessagePool(pct){
@@ -1045,13 +1060,17 @@
       msgIndex = 0;
       playBubbleMessage(MESSAGE_POOLS[tier][0]);
     }
-    if (msgRotateTimer) clearInterval(msgRotateTimer);
-    msgRotateTimer = setInterval(() => {
-      const pool = MESSAGE_POOLS[currentTier];
-      msgIndex = (msgIndex + 1) % pool.length;
-      playBubbleMessage(pool[msgIndex]);
-    }, 3800);
+    startBubbleRotation();
   }
+
+  // 캐릭터를 직접 눌러도 같은 방식으로 멘트가 바뀌고 모션이 재생돼요.
+  // 눌렀을 때는 자동 로테이션 타이머를 리셋해서 곧바로 또 안 겹쳐 보이게 해요.
+  document.querySelector('.gauge-avatar').addEventListener('click', () => {
+    const pool = MESSAGE_POOLS[currentTier];
+    msgIndex = (msgIndex + 1) % pool.length;
+    playBubbleMessage(pool[msgIndex]);
+    startBubbleRotation();
+  });
 
   updateGauge();
   refreshOccupancy();
