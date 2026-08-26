@@ -125,6 +125,11 @@
     position:relative;
   }
   .char-card:active{ transform:scale(0.96); }
+  .char-card{ animation:cardEnter .45s ease both; }
+  .char-card:nth-child(1){ animation-delay:.05s; }
+  .char-card:nth-child(2){ animation-delay:.15s; }
+  .char-card:nth-child(3){ animation-delay:.25s; }
+  @keyframes cardEnter{ from{ opacity:0; } to{ opacity:1; } }
   .char-card.selected{
     border-color:var(--mint);
     background:var(--bg-panel-2);
@@ -164,19 +169,43 @@
     color:var(--text);
     font-size:12.5px;
     line-height:1.7;
-    margin-bottom:auto;
+    margin-bottom:12px;
     word-break:keep-all;
     overflow-wrap:break-word;
     transition:opacity .25s ease;
   }
   .mood-bubble strong{ color:var(--mint); font-weight:800; -webkit-text-stroke:0.3px var(--mint); }
 
+  .reward-preview{
+    display:flex; align-items:center; gap:12px;
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px 16px;
+    margin-bottom:auto;
+  }
+  .reward-preview-icon{
+    width:40px; height:40px; border-radius:12px; flex-shrink:0;
+    background:var(--bg-panel-2);
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px;
+  }
+  .reward-preview-text{ flex:1; min-width:0; }
+  .reward-preview-title{ color:var(--text); font-size:12.5px; font-weight:800; margin-bottom:2px; }
+  .reward-preview-sub{ color:var(--muted2); font-size:10.5px; }
+  .reward-preview-count{ text-align:center; flex-shrink:0; }
+  .reward-preview-count b{ display:block; color:var(--mint); font-size:16px; font-weight:900; }
+  .reward-preview-count span{ display:block; color:var(--muted2); font-size:9px; font-weight:700; margin-top:1px; }
+
   .name-field{ margin-top:12px; }
   .name-field label{
-    display:block; color:var(--muted2); font-size:11.5px; font-weight:700;
+    display:flex; align-items:baseline; justify-content:space-between;
+    color:var(--muted2); font-size:11.5px; font-weight:700;
     margin-bottom:6px; letter-spacing:0.3px;
   }
   .name-field label .req{ color:var(--ember); margin-left:2px; }
+  .name-field label .count{ font-weight:600; font-variant-numeric:tabular-nums; }
+  .name-field label .count.max{ color:var(--ember); }
   .name-input{
     width:100%; box-sizing:border-box;
     background:var(--bg-panel);
@@ -224,7 +253,7 @@
 
   .toast{
     position:absolute;
-    bottom:100px; left:50%;
+    bottom:38px; left:50%;
     transform:translateX(-50%) translateY(10px);
     background:var(--text); color:#101718;
     padding:10px 18px;
@@ -381,8 +410,17 @@
 
     <div class="mood-bubble" id="moodBubble">캐릭터를 탭해서 성격을 확인해보세요 🐾</div>
 
+    <div class="reward-preview">
+      <div class="reward-preview-icon">🎁</div>
+      <div class="reward-preview-text">
+        <div class="reward-preview-title">4주 완주하면</div>
+        <div class="reward-preview-sub">해비치 어메니티 3종 리워드</div>
+      </div>
+      <div class="reward-preview-count"><b>12</b><span>미션</span></div>
+    </div>
+
     <div class="name-field">
-      <label for="nameInput">이름 <span class="req">*필수</span></label>
+      <label for="nameInput"><span>이름 <span class="req">*필수</span></span><span class="count" id="nameCount">0/10</span></label>
       <input type="text" id="nameInput" class="name-input" placeholder="회원님 성함을 입력해주세요" maxlength="10" />
       <div class="name-error" id="nameError">이름을 입력해주세요</div>
     </div>
@@ -402,7 +440,14 @@
   const toast = document.getElementById('toast');
   const nameInput = document.getElementById('nameInput');
   const nameError = document.getElementById('nameError');
+  const nameCount = document.getElementById('nameCount');
   let selected = null;
+
+  function updateNameCount(){
+    const len = nameInput.value.length;
+    nameCount.textContent = `${len}/10`;
+    nameCount.classList.toggle('max', len >= 10);
+  }
 
   // 받침 유무에 따라 조사를 올바르게 선택 (은/는, 이/가 등)
   function josa(word, withBatchim, withoutBatchim){
@@ -416,7 +461,7 @@
     const name = nameInput.value.trim();
     if (selected && name.length > 0){
       const card = document.querySelector('.char-card.selected');
-      cta.textContent = `${card.dataset.name}(으)로 시작할게요`;
+      cta.textContent = `${card.dataset.name}${josa(card.dataset.name, '으로', '로')} 시작할게요`;
       cta.classList.add('ready');
     } else if (selected) {
       cta.textContent = '이름을 입력해주세요';
@@ -430,6 +475,7 @@
   nameInput.addEventListener('input', () => {
     nameInput.classList.remove('error');
     nameError.classList.remove('show');
+    updateNameCount();
     updateCtaState();
   });
 
@@ -469,6 +515,8 @@
       name: nameInput.value.trim(),
     }));
 
+    const cardName = document.querySelector('.char-card.selected').dataset.name;
+    toast.textContent = `완료! ${cardName}${josa(cardName, '으로', '로')} 챌린지를 시작해요`;
     toast.classList.add('show');
     setTimeout(() => { window.location.href = 'gymmap.html'; }, 1400);
   });
@@ -481,6 +529,7 @@
       const card = document.querySelector(`.char-card[data-key="${saved.key}"]`);
       if (card) card.click();
       if (saved.name) nameInput.value = saved.name;
+      updateNameCount();
       updateCtaState();
     } catch (e) {}
   })();
