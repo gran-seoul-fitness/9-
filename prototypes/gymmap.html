@@ -91,31 +91,36 @@
   }
   h1 em{ color:var(--mint); font-style:normal; -webkit-text-stroke:0.5px var(--mint); }
 
-  .occupancy-bar{
-    display:flex; align-items:center; gap:6px;
-    margin-top:8px; padding:7px 12px;
+  .occupancy-card{
+    margin:0 0 10px;
+    padding:12px 16px;
     background:var(--bg-panel); border:1px solid var(--line);
-    border-radius:100px; width:fit-content; max-width:100%;
+    border-radius:18px;
+  }
+  .occupancy-card-head{
+    display:flex; align-items:center; gap:6px;
+    color:var(--muted2); font-size:10.5px; font-weight:700; letter-spacing:0.3px;
+    margin-bottom:5px;
   }
   .occupancy-live-dot{
-    width:6px; height:6px; border-radius:50%; flex-shrink:0;
+    width:7px; height:7px; border-radius:50%; flex-shrink:0;
     background:var(--mint);
     animation:occupancyPulse 1.6s ease-in-out infinite;
   }
   @keyframes occupancyPulse{
     0%,100%{ opacity:1; box-shadow:0 0 0 0 rgba(62,227,199,0.5); }
-    50%{ opacity:0.6; box-shadow:0 0 0 3px rgba(62,227,199,0); }
+    50%{ opacity:0.6; box-shadow:0 0 0 4px rgba(62,227,199,0); }
   }
-  .occupancy-text{ color:var(--muted2); font-size:10.5px; font-weight:600; white-space:nowrap; }
-  .occupancy-text b{ color:var(--text); font-weight:800; }
-  .occupancy-bar.level-low .occupancy-text b{ color:var(--mint-soft); }
-  .occupancy-bar.level-mid .occupancy-text b{ color:#FFD84D; }
-  .occupancy-bar.level-high .occupancy-text b{ color:var(--ember); }
-  .occupancy-bar.level-low .occupancy-live-dot{ background:var(--mint); }
-  .occupancy-bar.level-mid .occupancy-live-dot{ background:#FFD84D; }
-  .occupancy-bar.level-high .occupancy-live-dot{ background:var(--ember); }
-  .occupancy-count{ color:var(--muted2); font-size:10px; font-weight:700; padding-left:6px; border-left:1px solid rgba(255,255,255,0.08); white-space:nowrap; }
-  .occupancy-source{ color:var(--muted2); font-size:9px; font-weight:600; padding-left:6px; border-left:1px solid rgba(255,255,255,0.08); white-space:nowrap; opacity:0.7; }
+  .occupancy-source{ margin-left:auto; font-size:9px; font-weight:600; opacity:0.7; white-space:nowrap; }
+  .occupancy-card-body{ display:flex; align-items:baseline; gap:8px; }
+  .occupancy-card-level{ font-size:26px; font-weight:900; color:var(--text); line-height:1; }
+  .occupancy-card-count{ color:var(--muted2); font-size:13.5px; font-weight:700; white-space:nowrap; }
+  .occupancy-card.level-low .occupancy-card-level{ color:var(--mint-soft); }
+  .occupancy-card.level-mid .occupancy-card-level{ color:#FFD84D; }
+  .occupancy-card.level-high .occupancy-card-level{ color:var(--ember); }
+  .occupancy-card.level-low .occupancy-live-dot{ background:var(--mint); }
+  .occupancy-card.level-mid .occupancy-live-dot{ background:#FFD84D; }
+  .occupancy-card.level-high .occupancy-live-dot{ background:var(--ember); }
 
   /* ===== ZONE FLOOR ===== */
   .map-wrap{
@@ -407,12 +412,6 @@
   <div class="header-copy">
     <div class="eyebrow">GRAN SEOUL FITNESS</div>
     <h1>오늘의 헬스장 <em>맵</em></h1>
-    <div class="occupancy-bar" id="occupancyBar">
-      <span class="occupancy-live-dot"></span>
-      <span class="occupancy-text">실시간 혼잡도 · <b id="occupancyLevel">보통</b></span>
-      <span class="occupancy-count" id="occupancyCount">12/40명</span>
-      <span class="occupancy-source" id="occupancySource">샘플 데이터</span>
-    </div>
   </div>
 
   <div class="map-wrap">
@@ -500,6 +499,17 @@
   <div class="gauge-wrap">
     <div class="gauge-bubble">
       <div class="gauge-bubble-text" id="gaugeMsg">조금만 더 하면 됩니다!</div>
+    </div>
+    <div class="occupancy-card" id="occupancyCard">
+      <div class="occupancy-card-head">
+        <span class="occupancy-live-dot"></span>
+        <span>실시간 혼잡도</span>
+        <span class="occupancy-source" id="occupancySource">샘플 데이터</span>
+      </div>
+      <div class="occupancy-card-body">
+        <span class="occupancy-card-level" id="occupancyLevel">보통</span>
+        <span class="occupancy-card-count" id="occupancyCount">12/40명</span>
+      </div>
     </div>
     <div class="gauge-row">
       <svg class="gauge-avatar" id="gaugeAvatarSvg" viewBox="0 0 120 150">
@@ -683,7 +693,7 @@
     });
 
     const overallLevel = occupancyLevel(totalCount, totalCapacity);
-    const bar = document.getElementById('occupancyBar');
+    const bar = document.getElementById('occupancyCard');
     bar.classList.remove('level-low', 'level-mid', 'level-high');
     bar.classList.add('level-' + overallLevel);
     document.getElementById('occupancyLevel').textContent = OCC_LEVEL_LABEL[overallLevel];
