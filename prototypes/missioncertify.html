@@ -157,6 +157,8 @@
     border-style:solid; border-color:var(--mint);
     background:linear-gradient(160deg, #1c3430, #142523);
   }
+  .upload-zone.disabled{ cursor:not-allowed; opacity:0.55; }
+  .upload-zone.disabled:active{ transform:none; }
   #uploadPreviewImg{
     display:none;
     position:absolute; inset:0; width:100%; height:100%;
@@ -432,12 +434,31 @@
     return hasBatchim ? withBatchim : withoutBatchim;
   }
 
+  function todayStr(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  // ===== 스탬프는 하루에 한 번만 — gymmap.html에서 넘어와도 여기서 한 번 더 확인 =====
+  const savedProgress = JSON.parse(localStorage.getItem('gsProgress') || 'null') || { photos: {} };
+  const alreadyStampedToday = savedProgress.lastCertifyDate === todayStr();
+
   document.getElementById('zoneEyebrow').textContent = `${pending.zoneName} · ${pending.week}주차`;
   document.getElementById('equipName').textContent = `${pending.zoneName} · ${pending.missionName}`;
   document.getElementById('equipSets').innerHTML = pending.sets.map(s => `<span class="set-chip">${s}</span>`).join('');
   if (pending.equipPhoto) document.getElementById('equipPhotoImg').src = pending.equipPhoto;
 
-  uploadZone.addEventListener('click', () => fileInput.click());
+  if (alreadyStampedToday){
+    uploadZone.classList.add('disabled');
+    document.querySelector('.upload-text').textContent = '오늘은 이미 스탬프를 찍었어요';
+    document.querySelector('.upload-hint').textContent = '내일 다시 인증할 수 있어요';
+    submitBtn.textContent = '오늘은 이미 인증했어요 · 내일 다시';
+  }
+
+  uploadZone.addEventListener('click', () => {
+    if (alreadyStampedToday) return;
+    fileInput.click();
+  });
   fileInput.addEventListener('change', () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -453,16 +474,16 @@
   });
 
   submitBtn.addEventListener('click', () => {
-    if (!pendingPhoto) return;
+    if (!pendingPhoto || alreadyStampedToday) return;
 
-    const progress = JSON.parse(localStorage.getItem('gsProgress') || 'null') || { completedCount: pending.doneBefore, photos: {} };
-    progress.completedCount = pending.doneBefore + 1;
+    const progress = savedProgress;
     progress.photos = progress.photos || {};
     progress.photos[pending.missionId] = pendingPhoto;
+    progress.lastCertifyDate = todayStr();
     localStorage.setItem('gsProgress', JSON.stringify(progress));
     localStorage.removeItem('gsPendingMission');
 
-    const doneAfter = progress.completedCount;
+    const doneAfter = Object.keys(progress.photos).length;
     const pct = Math.round(doneAfter / pending.total * 100);
     document.getElementById('successTitle').innerHTML = `${pending.missionName}, <em>클리어!</em>`;
     document.getElementById('successSub').textContent = `${character.name}${josa(character.name, '이', '가')} 한 존 더 가까워졌어요.`;

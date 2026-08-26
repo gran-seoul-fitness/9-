@@ -81,6 +81,7 @@
     border-radius:100px; padding:6px 12px;
     font-size:11.5px; font-weight:700; color:var(--mint);
   }
+  .progress-pill.dim{ color:var(--muted2); border-color:rgba(255,255,255,0.06); }
 
   .header-copy{ padding:8px 22px 0; }
   .eyebrow{ color:var(--mint); font-size:10px; font-weight:700; letter-spacing:3px; margin-bottom:4px; }
@@ -118,7 +119,6 @@
   .zone-count{ color:var(--muted2); font-size:9.5px; margin-top:1px; white-space:nowrap; }
   .zone-label.complete .zone-title{ color:var(--mint-soft); }
   .zone-label.complete .zone-count{ color:var(--mint); font-weight:700; }
-  .zone-label.all-locked{ opacity:0.5; }
 
   .zone-cube{
     transform-box: fill-box; transform-origin: center;
@@ -126,7 +126,6 @@
     animation: zoneFadeIn .5s ease both;
   }
   .zone-cube:active{ transform:scale(0.92); }
-  .zone-cube.all-locked{ opacity:0.42; filter:grayscale(0.7); }
   #cube-weight{ animation-delay:.05s; }
   #cube-cardio{ animation-delay:.15s; }
   #cube-gx{ animation-delay:.25s; }
@@ -244,7 +243,6 @@
   }
   .mission-check.done{ background:linear-gradient(135deg, var(--mint), #22B79E); }
   .mission-check.available{ background:var(--bg-panel-2); border:2px solid var(--mint); }
-  .mission-check.locked{ background:var(--bg-panel-2); border:1.5px solid rgba(255,255,255,0.06); }
   .mission-check svg{ width:16px; height:16px; }
   .mission-row-text{ flex:1; }
   .mission-row-title{ color:var(--text); font-size:13.5px; font-weight:700; }
@@ -254,7 +252,6 @@
     background:rgba(62,227,199,0.1); border-radius:5px;
     padding:1px 5px; margin-right:4px; font-size:9.5px;
   }
-  .mission-row.locked .mission-row-title{ color:var(--muted2); }
   .mission-row-arrow{ color:var(--muted2); font-size:14px; }
 
   /* ===== MISSION DETAIL MODAL ===== */
@@ -367,7 +364,7 @@
   <div class="topbar">
     <div class="back-btn" id="backBtn">‹</div>
     <div style="display:flex; gap:6px;">
-      <div class="progress-pill" id="weekPill">1주차</div>
+      <div class="progress-pill" id="weekPill">오늘 인증 가능</div>
       <div class="progress-pill" id="topPill">6/12 완료</div>
     </div>
   </div>
@@ -592,14 +589,18 @@
     }
   };
 
-  // 4주 커리큘럼 순서: 이 순서대로 한 회차씩 잠금 해제돼요 (존과 무관)
-  const CURRICULUM_ORDER = [
-    'treadmill','bike','foamroll',   // 1주차
-    'back','chest','row',            // 2주차
-    'legs','shoulder','matstretch',  // 3주차
-    'stepmill','gxclass','cooldown', // 4주차
-  ];
-  let completedCount = 6; // 데모: 지금까지 6회 완료한 상태
+  // 미션은 순서 상관없이 원하는 대로 완료할 수 있어요. 다만 스탬프(인증)는 하루에 한 번만 찍을 수 있어요.
+  const DEFAULT_DONE_IDS = ['treadmill','bike','foamroll','back','chest','row']; // 데모: 지금까지 6개 완료한 상태
+  let doneIds = new Set(DEFAULT_DONE_IDS);
+  let lastCertifyDate = null; // 'YYYY-MM-DD' — 오늘 이미 스탬프를 찍었는지 확인용
+
+  function todayStr(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function usedStampToday(){
+    return lastCertifyDate === todayStr();
+  }
 
   function allMissions(){
     const list = [];
@@ -608,28 +609,27 @@
   }
 
   function recomputeStatus(){
-    const byId = {};
-    allMissions().forEach(m => byId[m.id] = m);
-    CURRICULUM_ORDER.forEach((id, idx) => {
-      const m = byId[id];
-      if (!m) return;
-      if (idx < completedCount) m.status = 'done';
-      else if (idx === completedCount) m.status = 'available';
-      else m.status = 'locked';
-    });
+    allMissions().forEach(m => { m.status = doneIds.has(m.id) ? 'done' : 'available'; });
   }
 
   // ===== 인증 완료 사진/진행률 저장소: missioncertify.html과 공유 =====
   (function loadProgress(){
     try {
-      const saved = JSON.parse(localStorage.getItem('gsProgress') || 'null');
-      if (!saved) return;
-      if (typeof saved.completedCount === 'number') completedCount = saved.completedCount;
+      let saved = JSON.parse(localStorage.getItem('gsProgress') || 'null');
+      if (!saved){
+        // 최초 방문: 데모로 완료된 상태를 실제 저장소에 기록해서 이후 화면들과 완료 개수가 어긋나지 않게 함
+        const seedPhotos = {};
+        DEFAULT_DONE_IDS.forEach(id => { seedPhotos[id] = (EQUIP_PHOTOS[id] || [])[0] || ''; });
+        saved = { photos: seedPhotos };
+        localStorage.setItem('gsProgress', JSON.stringify(saved));
+      }
       if (saved.photos){
+        doneIds = new Set(Object.keys(saved.photos));
         const byId = {};
         allMissions().forEach(m => byId[m.id] = m);
-        Object.keys(saved.photos).forEach(id => { if (byId[id]) byId[id].userPhoto = saved.photos[id]; });
+        Object.keys(saved.photos).forEach(id => { if (byId[id] && saved.photos[id]) byId[id].userPhoto = saved.photos[id]; });
       }
+      if (saved.lastCertifyDate) lastCertifyDate = saved.lastCertifyDate;
     } catch (e) {}
   })();
   recomputeStatus();
@@ -710,8 +710,7 @@
 
   function checkIcon(status){
     if (status === 'done') return '<svg viewBox="0 0 24 24" fill="none" stroke="#0a1211" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5,13 L10,18 L19,7"/></svg>';
-    if (status === 'available') return '<svg viewBox="0 0 24 24" fill="none" stroke="#3EE3C7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/></svg>';
-    return '<svg viewBox="0 0 24 24" fill="none" stroke="#7E9591" stroke-width="2" stroke-linecap="round"><path d="M6,8 a2 2 0 1 1 4 0 v8 a2 2 0 1 1 -4 0 Z"/><path d="M18,8 a2 2 0 1 0 -4 0 v8 a2 2 0 1 0 4 0 Z"/><path d="M10,12 h4"/></svg>';
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="#3EE3C7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/></svg>';
   }
 
   function openSheet(zoneKey){
@@ -727,14 +726,13 @@
           <div class="mission-row-title">${m.name}</div>
           <div class="mission-row-sub"><span class="week-tag">${m.week}주차</span> ${m.sets.join(' · ')}</div>
         </div>
-        <div class="mission-row-arrow">${m.status === 'locked' ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#7E9591" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8,11 V8 a4 4 0 0 1 8 0 v3"/></svg>' : '›'}</div>
+        <div class="mission-row-arrow">›</div>
       </div>
     `).join('');
 
     sheetList.querySelectorAll('.mission-row').forEach(row => {
       row.addEventListener('click', () => {
         const mission = zone.missions.find(m => m.id === row.dataset.id);
-        if (mission.status === 'locked') return;
         openDetail(mission);
       });
     });
@@ -773,6 +771,15 @@
     } else {
       doneBlock.style.display = 'none';
       availableBlock.style.display = 'block';
+      if (usedStampToday()){
+        goCertifyBtn.textContent = '오늘은 이미 인증했어요 · 내일 다시';
+        goCertifyBtn.classList.add('disabled');
+        goCertifyBtn.classList.remove('upload');
+      } else {
+        goCertifyBtn.textContent = '인증하러 가기';
+        goCertifyBtn.classList.remove('disabled');
+        goCertifyBtn.classList.add('upload');
+      }
     }
 
     detailBackdrop.classList.add('show');
@@ -799,6 +806,7 @@
 
   goCertifyBtn.addEventListener('click', () => {
     if (!currentMission || currentMission.status !== 'available') return;
+    if (usedStampToday()) return;
     const zone = ZONES[currentZoneKey];
     const total = allMissions().length;
     localStorage.setItem('gsPendingMission', JSON.stringify({
@@ -809,7 +817,7 @@
       week: currentMission.week,
       sets: currentMission.sets,
       equipPhoto: (EQUIP_PHOTOS[currentMission.id] || [])[0] || '',
-      doneBefore: completedCount,
+      doneBefore: doneIds.size,
       total: total,
     }));
     window.location.href = 'missioncertify.html';
@@ -819,7 +827,6 @@
     let done = 0, total = 0;
     Object.values(ZONES).forEach(z => {
       z.missions.forEach(m => { total++; if (m.status === 'done') done++; });
-      const zoneDone = z.missions.filter(m => m.status === 'done').length;
     });
     const pct = Math.round(done / total * 100);
     document.getElementById('gaugeFill').style.width = pct + '%';
@@ -829,25 +836,17 @@
     ['weight','cardio','gx','stretch'].forEach(key => {
       const z = ZONES[key];
       const d = z.missions.filter(m => m.status === 'done').length;
-      const allLocked = z.missions.every(m => m.status === 'locked');
       const el = document.getElementById('label-' + key);
       el.querySelector('.zone-count').textContent = `${d}/${z.missions.length}`;
       el.classList.toggle('complete', d === z.missions.length);
-      el.classList.toggle('all-locked', allLocked);
-      document.getElementById('cube-' + key).classList.toggle('all-locked', allLocked);
     });
 
     setMessagePool(pct);
 
-    const byId = {};
-    allMissions().forEach(m => byId[m.id] = m);
-    const weekPill = document.getElementById('weekPill');
-    if (completedCount >= CURRICULUM_ORDER.length){
-      weekPill.textContent = '4주 완주';
-    } else {
-      const nextId = CURRICULUM_ORDER[completedCount];
-      weekPill.textContent = `${byId[nextId].week}주차`;
-    }
+    const stampPill = document.getElementById('weekPill');
+    const stampedToday = usedStampToday();
+    stampPill.textContent = stampedToday ? '오늘 인증 완료' : '오늘 인증 가능';
+    stampPill.classList.toggle('dim', stampedToday);
   }
 
   // ===== 게이지 캐릭터 말풍선: 주기적으로 멘트를 바꾸며 팝 모션 재생 =====
