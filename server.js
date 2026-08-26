@@ -41,6 +41,25 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 자체 호스팅하는 웹폰트 (외부 CDN 의존 없이 안정적으로 로드하기 위해)
+  if (url.startsWith('/fonts/') && req.method === 'GET') {
+    const filename = path.basename(url);
+    if (/^[A-Za-z0-9-]+\.woff2$/.test(filename)) {
+      try {
+        const buf = fs.readFileSync(path.join(PROTOTYPES_DIR, 'fonts', filename));
+        res.writeHead(200, { 'Content-Type': 'font/woff2', 'Cache-Control': 'public, max-age=604800' });
+        res.end(buf);
+      } catch (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('폰트를 찾을 수 없어요');
+      }
+    } else {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('잘못된 요청이에요');
+    }
+    return;
+  }
+
   const page = PAGES[url];
   if (page) {
     try {
