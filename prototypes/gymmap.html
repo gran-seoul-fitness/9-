@@ -91,34 +91,6 @@
   }
   h1 em{ color:var(--mint); font-style:normal; -webkit-text-stroke:0.5px var(--mint); }
 
-  .occupancy-card{
-    margin:0 0 10px;
-    padding:12px 16px;
-    background:var(--bg-panel); border:1px solid var(--line);
-    border-radius:18px;
-  }
-  .occupancy-card-head{
-    display:flex; align-items:center; gap:6px;
-    color:var(--muted2); font-size:10.5px; font-weight:700; letter-spacing:0.3px;
-    margin-bottom:5px;
-  }
-  .occupancy-live-dot{
-    width:7px; height:7px; border-radius:50%; flex-shrink:0;
-    background:var(--mint);
-    animation:occupancyPulse 1.6s ease-in-out infinite;
-  }
-  @keyframes occupancyPulse{
-    0%,100%{ opacity:1; box-shadow:0 0 0 0 rgba(62,227,199,0.5); }
-    50%{ opacity:0.6; box-shadow:0 0 0 4px rgba(62,227,199,0); }
-  }
-  .occupancy-source{ margin-left:auto; font-size:9px; font-weight:600; opacity:0.7; white-space:nowrap; }
-  .occupancy-card-body{ display:flex; align-items:baseline; gap:8px; }
-  .occupancy-card-level{ font-size:26px; font-weight:900; color:var(--mint-soft); line-height:1; }
-  .occupancy-card-count{ color:var(--muted2); font-size:13.5px; font-weight:700; white-space:nowrap; }
-  .occupancy-card.level-low .occupancy-live-dot{ background:var(--mint); }
-  .occupancy-card.level-mid .occupancy-live-dot{ background:#FFD84D; }
-  .occupancy-card.level-high .occupancy-live-dot{ background:var(--ember); }
-
   /* ===== ZONE FLOOR ===== */
   .map-wrap{
     position:relative;
@@ -143,15 +115,6 @@
     z-index:2;
   }
   .zone-label:active{ transform:translate(-50%,0) scale(0.96); }
-  .occ-dot{
-    position:absolute; top:-3px; right:-3px;
-    width:9px; height:9px; border-radius:50%;
-    background:var(--mint); border:1.5px solid var(--bg-panel);
-    z-index:3;
-  }
-  .occ-dot.level-low{ background:var(--mint); }
-  .occ-dot.level-mid{ background:#FFD84D; }
-  .occ-dot.level-high{ background:var(--ember); }
   .zone-title{ color:var(--text); font-size:12.5px; font-weight:800; white-space:nowrap; }
   .zone-count{ color:var(--muted2); font-size:9.5px; margin-top:1px; white-space:nowrap; }
   .zone-label.complete .zone-title{ color:var(--mint-soft); }
@@ -472,22 +435,18 @@
     </svg>
 
     <div class="zone-label complete" id="label-weight" style="left:24.4%; top:45.5%;">
-      <span class="occ-dot" id="occ-dot-weight"></span>
       <div class="zone-title">웨이트</div>
       <div class="zone-count">3/4</div>
     </div>
     <div class="zone-label complete" id="label-cardio" style="left:71.9%; top:45.5%;">
-      <span class="occ-dot" id="occ-dot-cardio"></span>
       <div class="zone-title">유산소</div>
       <div class="zone-count">3/4</div>
     </div>
     <div class="zone-label" id="label-gx" style="left:24.4%; top:79.7%;">
-      <span class="occ-dot" id="occ-dot-gx"></span>
       <div class="zone-title">GX</div>
       <div class="zone-count">0/1</div>
     </div>
     <div class="zone-label" id="label-stretch" style="left:71.9%; top:79.7%;">
-      <span class="occ-dot" id="occ-dot-stretch"></span>
       <div class="zone-title">스트레칭</div>
       <div class="zone-count">0/3</div>
     </div>
@@ -495,17 +454,6 @@
   </div>
 
   <div class="gauge-wrap">
-    <div class="occupancy-card" id="occupancyCard">
-      <div class="occupancy-card-head">
-        <span class="occupancy-live-dot"></span>
-        <span>실시간 혼잡도</span>
-        <span class="occupancy-source" id="occupancySource">샘플 데이터</span>
-      </div>
-      <div class="occupancy-card-body">
-        <span class="occupancy-card-level" id="occupancyLevel">보통</span>
-        <span class="occupancy-card-count" id="occupancyCount">12/40명</span>
-      </div>
-    </div>
     <div class="gauge-bubble">
       <div class="gauge-bubble-text" id="gaugeMsg">조금만 더 하면 됩니다!</div>
     </div>
@@ -685,70 +633,6 @@
     }
   };
 
-  // ===== 실시간 혼잡도 =====
-  // 로컬 혼잡도 API(backend/server.js)가 켜져 있으면 그 값을 쓰고, 없으면 아래 샘플
-  // 수치로 조용히 대체돼요. backend/README.md 참고해서 실제 입퇴실 기록과 연동하세요.
-  // 상대 경로로 두면 server.js가 화면과 API를 같은 포트에서 같이 서빙할 때 그대로
-  // 맞아떨어져요. (server.js 없이 이 파일을 그냥 열어보면 이 요청은 조용히 실패하고
-  // 샘플 데이터로 대체돼요 — 아래 fetchLiveOccupancy() 참고.)
-  const OCCUPANCY_API_URL = '/api/occupancy';
-  const FALLBACK_OCCUPANCY = {
-    weight:  { count: 3, capacity: 8 },
-    cardio:  { count: 4, capacity: 7 },
-    gx:      { count: 4, capacity: 10 },
-    stretch: { count: 2, capacity: 5 },
-  };
-  let OCCUPANCY = FALLBACK_OCCUPANCY;
-  let occupancyIsLive = false;
-  const OCC_LEVEL_LABEL = { low:'여유', mid:'보통', high:'혼잡' };
-
-  function occupancyLevel(count, capacity){
-    const pct = capacity > 0 ? count / capacity : 0;
-    if (pct < 0.4) return 'low';
-    if (pct < 0.75) return 'mid';
-    return 'high';
-  }
-
-  async function fetchLiveOccupancy(){
-    try {
-      const res = await fetch(OCCUPANCY_API_URL, { signal: AbortSignal.timeout(1500) });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.zones || null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function renderOccupancy(){
-    let totalCount = 0, totalCapacity = 0;
-    ['weight','cardio','gx','stretch'].forEach(key => {
-      const o = OCCUPANCY[key];
-      const level = occupancyLevel(o.count, o.capacity);
-      totalCount += o.count;
-      totalCapacity += o.capacity;
-      const dot = document.getElementById('occ-dot-' + key);
-      dot.classList.remove('level-low', 'level-mid', 'level-high');
-      dot.classList.add('level-' + level);
-      dot.title = `${OCC_LEVEL_LABEL[level]} · ${o.count}명 이용 중${o.estimated ? ' (추정)' : ''}`;
-    });
-
-    const overallLevel = occupancyLevel(totalCount, totalCapacity);
-    const bar = document.getElementById('occupancyCard');
-    bar.classList.remove('level-low', 'level-mid', 'level-high');
-    bar.classList.add('level-' + overallLevel);
-    document.getElementById('occupancyLevel').textContent = OCC_LEVEL_LABEL[overallLevel];
-    document.getElementById('occupancyCount').textContent = `${totalCount}/${totalCapacity}명`;
-    document.getElementById('occupancySource').textContent = occupancyIsLive ? '연동됨' : '샘플 데이터';
-  }
-
-  async function refreshOccupancy(){
-    const live = await fetchLiveOccupancy();
-    if (live){ OCCUPANCY = live; occupancyIsLive = true; }
-    else { OCCUPANCY = FALLBACK_OCCUPANCY; occupancyIsLive = false; }
-    renderOccupancy();
-  }
-
   // 미션은 순서 상관없이 원하는 대로 완료할 수 있어요. 다만 스탬프(인증)는 하루에 한 번만 찍을 수 있어요.
   const DEFAULT_DONE_IDS = ['treadmill','bike','foamroll','back','chest']; // 데모: 지금까지 5개 완료한 상태
   let doneIds = new Set(DEFAULT_DONE_IDS);
@@ -877,10 +761,8 @@
     currentZoneKey = zoneKey;
     const zone = ZONES[zoneKey];
     const done = zone.missions.filter(m => m.status === 'done').length;
-    const occ = OCCUPANCY[zoneKey];
-    const occLevel = occupancyLevel(occ.count, occ.capacity);
     sheetTitle.textContent = zone.name;
-    sheetSub.textContent = `${zone.missions.length}개 미션 중 ${done}개 완료 · 지금 ${OCC_LEVEL_LABEL[occLevel]} (${occ.count}명)`;
+    sheetSub.textContent = `${zone.missions.length}개 미션 중 ${done}개 완료`;
     sheetList.innerHTML = zone.missions.map(m => `
       <div class="mission-row ${m.status}" data-id="${m.id}">
         <div class="mission-check ${m.status}">${checkIcon(m.status)}</div>
@@ -1081,8 +963,6 @@
   });
 
   updateGauge();
-  refreshOccupancy();
-  setInterval(refreshOccupancy, 30000); // 백엔드가 켜져 있으면 30초마다 최신값으로 갱신
 </script>
 
 </body>
