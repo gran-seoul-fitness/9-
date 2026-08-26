@@ -76,6 +76,25 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 미션 인증 카드에 쓰는 실제 기구 사진들 (prototypes/images/equipment/*.jpg)
+  if (url.startsWith('/images/equipment/') && req.method === 'GET') {
+    const filename = path.basename(url);
+    if (/^[a-z0-9-]+\.jpg$/.test(filename)) {
+      try {
+        const buf = fs.readFileSync(path.join(PROTOTYPES_DIR, 'images', 'equipment', filename));
+        res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400' });
+        res.end(buf);
+      } catch (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('이미지를 찾을 수 없어요');
+      }
+    } else {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('잘못된 요청이에요');
+    }
+    return;
+  }
+
   const page = PAGES[url];
   if (page) {
     try {
