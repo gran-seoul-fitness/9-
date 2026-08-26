@@ -637,7 +637,10 @@
   // ===== 실시간 혼잡도 =====
   // 로컬 혼잡도 API(backend/server.js)가 켜져 있으면 그 값을 쓰고, 없으면 아래 샘플
   // 수치로 조용히 대체돼요. backend/README.md 참고해서 실제 입퇴실 기록과 연동하세요.
-  const OCCUPANCY_API_URL = 'http://localhost:8787/api/occupancy';
+  // 상대 경로로 두면 server.js가 화면과 API를 같은 포트에서 같이 서빙할 때 그대로
+  // 맞아떨어져요. (server.js 없이 이 파일을 그냥 열어보면 이 요청은 조용히 실패하고
+  // 샘플 데이터로 대체돼요 — 아래 fetchLiveOccupancy() 참고.)
+  const OCCUPANCY_API_URL = '/api/occupancy';
   const FALLBACK_OCCUPANCY = {
     weight:  { count: 8,  capacity: 15 },
     cardio:  { count: 12, capacity: 15 },

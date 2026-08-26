@@ -1,14 +1,16 @@
-# 혼잡도 API 서버 (로컬용 스타터)
+# 혼잡도 API (로컬용 스타터)
 
 `prototypes/gymmap.html`의 "실시간 혼잡도" 표시는 원래 코드에 박혀있는 샘플 숫자예요.
-이 폴더는 그 샘플 숫자를, 입퇴실 기록으로부터 계산한 실제 값으로 바꿔치기하는 아주
-작은 로컬 서버예요.
+이 폴더는 그 샘플 숫자를, 입퇴실 기록으로부터 계산한 실제 값으로 바꿔치기하는 계산
+로직과 데이터예요.
+
+> 화면까지 같이 띄우려면 저장소 루트에서 `node server.js`를 실행하세요 (README.md
+> 참고). 아래 `backend/server.js`는 이 API만 단독으로 띄워보고 싶을 때 써요.
 
 ## 실행 방법
 
 ```bash
-cd backend
-node server.js
+node backend/server.js
 ```
 
 `http://localhost:8787/api/occupancy` 접속해서 JSON이 나오면 정상이에요.
