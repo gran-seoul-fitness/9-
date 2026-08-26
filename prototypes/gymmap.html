@@ -576,7 +576,7 @@
     gx: {
       name:'GX',
       missions:[
-        { id:'gxclass', name:'GX 그룹수업', week:4, sets:['1회 참여'] },
+        { id:'gxclass', name:'GX 그룹수업', week:4, sets:['1회 참여'], equipNoun:'매트' },
       ]
     },
     stretch: {
@@ -817,6 +817,7 @@
       week: currentMission.week,
       sets: currentMission.sets,
       equipPhoto: (EQUIP_PHOTOS[currentMission.id] || [])[0] || '',
+      equipNoun: currentMission.equipNoun || '기구',
       doneBefore: doneIds.size,
       total: total,
     }));

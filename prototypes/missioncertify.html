@@ -195,6 +195,32 @@
   .preview-label{ color:var(--mint-soft); font-size:13px; font-weight:800; }
   .preview-sub{ color:var(--muted2); font-size:10.5px; }
 
+  .confirm-check{
+    display:flex; align-items:center; gap:10px;
+    margin:14px 22px 0; padding:12px 14px;
+    background:var(--bg-panel);
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px;
+    cursor:pointer;
+    transition:border-color .2s ease;
+  }
+  .confirm-check input{ position:absolute; opacity:0; width:0; height:0; }
+  .confirm-box{
+    width:22px; height:22px; border-radius:7px; flex-shrink:0;
+    border:1.5px solid rgba(255,255,255,0.16);
+    background:var(--bg-panel-2);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .confirm-box svg{ width:13px; height:13px; opacity:0; transform:scale(0.5); transition:all .15s cubic-bezier(.34,1.56,.64,1); }
+  .confirm-check input:checked ~ .confirm-box{
+    background:linear-gradient(135deg, var(--mint), #22B79E);
+    border-color:var(--mint);
+  }
+  .confirm-check input:checked ~ .confirm-box svg{ opacity:1; transform:scale(1); }
+  .confirm-check.checked{ border-color:var(--line); }
+  .confirm-label{ color:var(--text); font-size:12.5px; font-weight:600; }
+  .confirm-label b{ color:var(--mint-soft); font-weight:800; }
+
   .cta-wrap{ padding:18px 22px 22px; margin-top:auto; }
   .cta{
     width:100%; padding:16px; border:none; border-radius:16px;
@@ -304,7 +330,7 @@
     <div class="header-copy">
       <div class="eyebrow" id="zoneEyebrow">ZONE · 어깨</div>
       <h1>인증샷을<br/><em>올려줘</em></h1>
-      <p class="sub">기구 앞에서 찍은 사진 한 장이면 충분해요.</p>
+      <p class="sub" id="uploadSub">기구 앞에서 찍은 사진 한 장이면 충분해요.</p>
     </div>
 
     <div class="equip-card">
@@ -326,8 +352,8 @@
       <div class="upload-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="#3EE3C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4,17 V19 a2 2 0 0 0 2 2 h12 a2 2 0 0 0 2 -2 v-2"/><path d="M7,9 L12,4 L17,9"/><path d="M12,4 V15"/></svg>
       </div>
-      <div class="upload-text">탭해서 사진 올리기</div>
-      <div class="upload-hint">기구와 함께 나오면 더 좋아요</div>
+      <div class="upload-text" id="uploadText">탭해서 사진 올리기</div>
+      <div class="upload-hint" id="uploadHint">기구와 함께 나와야 인증돼요</div>
       <img id="uploadPreviewImg" src="" alt="" />
 
       <div class="preview-badge">
@@ -339,6 +365,14 @@
       </div>
       <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;" />
     </div>
+
+    <label class="confirm-check" id="confirmCheck">
+      <input type="checkbox" id="confirmCheckbox" />
+      <span class="confirm-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0a1211" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5,13 L10,18 L19,7"/></svg>
+      </span>
+      <span class="confirm-label" id="confirmLabel">사진에 <b>기구</b>가 함께 나왔어요</span>
+    </label>
 
     <div class="cta-wrap">
       <button class="cta" id="submitBtn">사진을 먼저 올려주세요</button>
@@ -419,10 +453,13 @@
   const successScreen = document.getElementById('successScreen');
   let pendingPhoto = null;
 
+  const confirmCheck = document.getElementById('confirmCheck');
+  const confirmCheckbox = document.getElementById('confirmCheckbox');
+
   // ===== gymmap.html에서 넘어온 미션 정보 =====
   const pending = JSON.parse(localStorage.getItem('gsPendingMission') || 'null') || {
     zoneKey:'weight', zoneName:'웨이트', missionId:'shoulder', missionName:'어깨',
-    week:3, sets:['3세트','12회','사이드레터럴 병행'], equipPhoto:'', doneBefore:6, total:12,
+    week:3, sets:['3세트','12회','사이드레터럴 병행'], equipPhoto:'', equipNoun:'기구', doneBefore:6, total:12,
   };
   const character = JSON.parse(localStorage.getItem('gsCharacter') || 'null') || { key:'tiger', name:'회원' };
 
@@ -443,15 +480,38 @@
   const savedProgress = JSON.parse(localStorage.getItem('gsProgress') || 'null') || { photos: {} };
   const alreadyStampedToday = savedProgress.lastCertifyDate === todayStr();
 
+  const equipNoun = pending.equipNoun || '기구';
+
   document.getElementById('zoneEyebrow').textContent = `${pending.zoneName} · ${pending.week}주차`;
   document.getElementById('equipName').textContent = `${pending.zoneName} · ${pending.missionName}`;
   document.getElementById('equipSets').innerHTML = pending.sets.map(s => `<span class="set-chip">${s}</span>`).join('');
   if (pending.equipPhoto) document.getElementById('equipPhotoImg').src = pending.equipPhoto;
+  document.getElementById('equipPhotoImg').alt = `${pending.zoneName} 존 ${equipNoun}`;
+
+  document.getElementById('uploadSub').textContent = `${equipNoun}${josa(equipNoun, '이', '가')} 보이게 찍은 사진 한 장이면 충분해요.`;
+  document.getElementById('uploadHint').textContent = `${equipNoun}${josa(equipNoun, '과', '와')} 함께 나와야 인증돼요`;
+  document.getElementById('confirmLabel').innerHTML = `사진에 <b>${equipNoun}</b>${josa(equipNoun, '이', '가')} 함께 나왔어요`;
+
+  function updateSubmitState(){
+    if (alreadyStampedToday) return;
+    if (pendingPhoto && confirmCheckbox.checked){
+      submitBtn.textContent = '인증 완료하기';
+      submitBtn.classList.add('ready');
+    } else if (pendingPhoto){
+      submitBtn.textContent = `${equipNoun}가 나왔는지 확인해주세요`;
+      submitBtn.classList.remove('ready');
+    } else {
+      submitBtn.textContent = '사진을 먼저 올려주세요';
+      submitBtn.classList.remove('ready');
+    }
+  }
 
   if (alreadyStampedToday){
     uploadZone.classList.add('disabled');
-    document.querySelector('.upload-text').textContent = '오늘은 이미 스탬프를 찍었어요';
-    document.querySelector('.upload-hint').textContent = '내일 다시 인증할 수 있어요';
+    confirmCheck.style.pointerEvents = 'none';
+    confirmCheck.style.opacity = '0.5';
+    document.getElementById('uploadText').textContent = '오늘은 이미 스탬프를 찍었어요';
+    document.getElementById('uploadHint').textContent = '내일 다시 인증할 수 있어요';
     submitBtn.textContent = '오늘은 이미 인증했어요 · 내일 다시';
   }
 
@@ -467,14 +527,18 @@
       pendingPhoto = e.target.result;
       uploadPreviewImg.src = pendingPhoto;
       uploadZone.classList.add('filled');
-      submitBtn.textContent = '인증 완료하기';
-      submitBtn.classList.add('ready');
+      updateSubmitState();
     };
     reader.readAsDataURL(file);
   });
 
+  confirmCheckbox.addEventListener('change', () => {
+    confirmCheck.classList.toggle('checked', confirmCheckbox.checked);
+    updateSubmitState();
+  });
+
   submitBtn.addEventListener('click', () => {
-    if (!pendingPhoto || alreadyStampedToday) return;
+    if (!pendingPhoto || !confirmCheckbox.checked || alreadyStampedToday) return;
 
     const progress = savedProgress;
     progress.photos = progress.photos || {};
