@@ -113,11 +113,8 @@
   }
   .occupancy-source{ margin-left:auto; font-size:9px; font-weight:600; opacity:0.7; white-space:nowrap; }
   .occupancy-card-body{ display:flex; align-items:baseline; gap:8px; }
-  .occupancy-card-level{ font-size:26px; font-weight:900; color:var(--text); line-height:1; }
+  .occupancy-card-level{ font-size:26px; font-weight:900; color:var(--mint-soft); line-height:1; }
   .occupancy-card-count{ color:var(--muted2); font-size:13.5px; font-weight:700; white-space:nowrap; }
-  .occupancy-card.level-low .occupancy-card-level{ color:var(--mint-soft); }
-  .occupancy-card.level-mid .occupancy-card-level{ color:#FFD84D; }
-  .occupancy-card.level-high .occupancy-card-level{ color:var(--ember); }
   .occupancy-card.level-low .occupancy-live-dot{ background:var(--mint); }
   .occupancy-card.level-mid .occupancy-live-dot{ background:#FFD84D; }
   .occupancy-card.level-high .occupancy-live-dot{ background:var(--ember); }
@@ -497,9 +494,6 @@
   </div>
 
   <div class="gauge-wrap">
-    <div class="gauge-bubble">
-      <div class="gauge-bubble-text" id="gaugeMsg">조금만 더 하면 됩니다!</div>
-    </div>
     <div class="occupancy-card" id="occupancyCard">
       <div class="occupancy-card-head">
         <span class="occupancy-live-dot"></span>
@@ -510,6 +504,9 @@
         <span class="occupancy-card-level" id="occupancyLevel">보통</span>
         <span class="occupancy-card-count" id="occupancyCount">12/40명</span>
       </div>
+    </div>
+    <div class="gauge-bubble">
+      <div class="gauge-bubble-text" id="gaugeMsg">조금만 더 하면 됩니다!</div>
     </div>
     <div class="gauge-row">
       <svg class="gauge-avatar" id="gaugeAvatarSvg" viewBox="0 0 120 150">
