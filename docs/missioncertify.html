@@ -89,17 +89,17 @@
   .preview-check{ animation:mcCheckPop .4s cubic-bezier(.34,1.56,.64,1); }
   @keyframes mcCheckPop{ 0%{ transform:scale(0.4); opacity:0; } 70%{ transform:scale(1.12); opacity:1; } 100%{ transform:scale(1); } }
 
-  .header-copy{ padding:16px 26px 4px; }
-  .eyebrow{ color:var(--mint); font-size:10.5px; font-weight:700; letter-spacing:3px; margin-bottom:6px; }
+  .header-copy{ padding:10px 26px 4px; }
+  .eyebrow{ color:var(--mint); font-size:10.5px; font-weight:700; letter-spacing:3px; margin-bottom:4px; }
   h1{
     font-family:'NanumSquare', sans-serif; font-weight:900; color:var(--text);
-    font-size:26px; line-height:1.28; margin:0 0 6px; letter-spacing:0.3px;
+    font-size:22px; line-height:1.25; margin:0 0 4px; letter-spacing:0.3px;
   }
   h1 em{ color:var(--mint); font-style:normal; -webkit-text-stroke:0.5px var(--mint); }
-  .sub{ color:var(--muted2); font-size:12.5px; line-height:1.55; margin:0; }
+  .sub{ color:var(--muted2); font-size:12.5px; line-height:1.5; margin:0; }
 
   .equip-card{
-    margin:16px 22px 0;
+    margin:10px 22px 0;
     background:var(--bg-panel);
     border:1px solid var(--line);
     border-radius:18px;
@@ -107,11 +107,18 @@
     flex-shrink:0;
   }
   .equip-gallery-wrap{ padding:10px 10px 0; }
-  .equip-gallery-group-title{
-    color:var(--mint-soft); font-size:10px; font-weight:800;
-    margin:8px 2px 6px; letter-spacing:0.2px;
+  .equip-gallery-tabs{ display:flex; gap:6px; margin-bottom:8px; }
+  .equip-gallery-tab{
+    flex:1; text-align:center;
+    padding:7px 8px; border-radius:100px;
+    background:var(--bg-panel-2); border:1px solid var(--line);
+    color:var(--muted2); font-size:11px; font-weight:700;
+    cursor:pointer; transition:all .15s ease;
   }
-  .equip-gallery-group-title:first-child{ margin-top:0; }
+  .equip-gallery-tab.active{
+    background:rgba(62,227,199,0.14); border-color:var(--mint);
+    color:var(--mint-soft);
+  }
   .equip-gallery{
     display:flex; gap:8px; overflow-x:auto;
     scroll-snap-type:x mandatory;
@@ -119,7 +126,7 @@
   .equip-gallery::-webkit-scrollbar{ display:none; }
   .equip-gallery-item{
     position:relative; flex:0 0 auto;
-    width:78%; aspect-ratio: 16 / 10;
+    width:78%; aspect-ratio: 16 / 8;
     border-radius:14px; overflow:hidden;
     scroll-snap-align:start;
   }
@@ -142,8 +149,8 @@
     padding:5px 10px; border-radius:100px;
     backdrop-filter:blur(3px);
   }
-  .equip-info{ padding:14px 16px 16px; }
-  .equip-name{ color:var(--text); font-size:15px; font-weight:800; margin-bottom:8px; }
+  .equip-info{ padding:10px 16px 12px; }
+  .equip-name{ color:var(--text); font-size:15px; font-weight:800; margin-bottom:6px; }
   .equip-sets{ display:flex; gap:6px; flex-wrap:wrap; }
   .set-chip{
     background:var(--bg-panel-2); color:var(--mint-soft);
@@ -153,11 +160,11 @@
   }
 
   .upload-zone{
-    margin:18px 22px 0;
+    margin:12px 22px 0;
     border:1.5px dashed rgba(62,227,199,0.35);
     border-radius:20px;
     background:var(--bg-panel);
-    aspect-ratio: 1 / 1.05;
+    aspect-ratio: 1 / 0.65;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:10px;
     cursor:pointer;
@@ -211,7 +218,7 @@
 
   .confirm-check{
     display:flex; align-items:center; gap:10px;
-    margin:14px 22px 0; padding:12px 14px;
+    margin:10px 22px 0; padding:10px 14px;
     background:var(--bg-panel);
     border:1px solid rgba(255,255,255,0.06);
     border-radius:14px;
@@ -235,7 +242,7 @@
   .confirm-label{ color:var(--text); font-size:12.5px; font-weight:600; }
   .confirm-label b{ color:var(--mint-soft); font-weight:800; }
 
-  .cta-wrap{ padding:18px 22px 22px; margin-top:auto; }
+  .cta-wrap{ padding:12px 22px 16px; margin-top:auto; }
   .cta{
     width:100%; padding:16px; border:none; border-radius:16px;
     font-family:'NanumSquare', sans-serif; font-size:15px; font-weight:900;
@@ -517,10 +524,15 @@
   const equipHasGroups = equipOptions.some(o => o.group);
   if (equipHasGroups){
     const equipGroups = [...new Set(equipOptions.map(o => o.group))];
-    equipGalleryEl.innerHTML = equipGroups.map(g => `
-      <div class="equip-gallery-group-title">${g}</div>
-      ${renderEquipRow(equipOptions.filter(o => o.group === g))}
-    `).join('');
+    let activeEquipGroup = equipGroups[0];
+    const renderGroupedEquip = () => {
+      const tabs = equipGroups.map(g => `<div class="equip-gallery-tab ${g === activeEquipGroup ? 'active' : ''}" data-group="${g}">${g}</div>`).join('');
+      equipGalleryEl.innerHTML = `<div class="equip-gallery-tabs">${tabs}</div>${renderEquipRow(equipOptions.filter(o => o.group === activeEquipGroup))}`;
+      equipGalleryEl.querySelectorAll('.equip-gallery-tab').forEach(tab => {
+        tab.addEventListener('click', () => { activeEquipGroup = tab.dataset.group; renderGroupedEquip(); });
+      });
+    };
+    renderGroupedEquip();
   } else {
     equipGalleryEl.innerHTML = renderEquipRow(equipOptions);
   }
