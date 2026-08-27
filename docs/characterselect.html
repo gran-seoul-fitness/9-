@@ -17,6 +17,17 @@
     } catch (e) {}
   })();
 </script>
+<script>
+  // iOS Safari는 100vh를 주소창이 사라진 상태 기준으로 계산해서, 실제 보이는
+  // 화면보다 페이지가 더 길어져 버튼이 화면 밖으로 밀려날 수 있어요.
+  // window.innerHeight로 실제 보이는 높이를 직접 재서 CSS 변수로 넘겨줘요.
+  function setRealVH(){
+    document.documentElement.style.setProperty('--real-vh', window.innerHeight + 'px');
+  }
+  setRealVH();
+  window.addEventListener('resize', setRealVH);
+  window.addEventListener('orientationchange', setRealVH);
+</script>
 <style>
   @font-face{ font-family:'NanumSquare'; src:url('fonts/NanumSquareL.woff2') format('woff2'); font-weight:300; font-display:swap; }
   @font-face{ font-family:'NanumSquare'; src:url('fonts/NanumSquareR.woff2') format('woff2'); font-weight:400; font-display:swap; }
@@ -81,9 +92,9 @@
   /* 실제 폰에서 열었을 때는 폰 목업 틀 없이 화면 전체를 꽉 채우고,
      기기 자체 상태바랑 겹치는 가짜 시계는 숨겨요. */
   @media (max-width:480px){
-    body{ padding:0; }
+    body{ padding:0; min-height:100vh; min-height:var(--real-vh, 100vh); }
     .phone{
-      width:100%; height:100vh; height:100dvh; max-height:none;
+      width:100%; height:100vh; height:100dvh; height:var(--real-vh, 100vh); max-height:none;
       border-radius:0; border:none; box-shadow:none;
     }
     .statusbar span:first-child{ display:none; }
