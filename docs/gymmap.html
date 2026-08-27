@@ -273,11 +273,18 @@
 
   .gallery-label{ color:var(--muted2); font-size:10.5px; font-weight:700; margin-bottom:6px; letter-spacing:0.3px; }
   .gallery-wrap{ margin-bottom:14px; }
-  .gallery-group-title{
-    color:var(--mint-soft); font-size:10px; font-weight:800;
-    margin:8px 0 6px; letter-spacing:0.2px;
+  .gallery-tabs{ display:flex; gap:6px; margin-bottom:8px; }
+  .gallery-tab{
+    flex:1; text-align:center;
+    padding:7px 8px; border-radius:100px;
+    background:var(--bg-panel-2); border:1px solid var(--line);
+    color:var(--muted2); font-size:11px; font-weight:700;
+    cursor:pointer; transition:all .15s ease;
   }
-  .gallery-group-title:first-child{ margin-top:0; }
+  .gallery-tab.active{
+    background:rgba(62,227,199,0.14); border-color:var(--mint);
+    color:var(--mint-soft);
+  }
   .photo-gallery{
     display:flex; gap:8px; overflow-x:auto;
     scroll-snap-type:x mandatory;
@@ -809,10 +816,15 @@
     const hasGroups = options.some(o => o.group);
     if (hasGroups){
       const groups = [...new Set(options.map(o => o.group))];
-      photoGallery.innerHTML = groups.map(g => `
-        <div class="gallery-group-title">${g}</div>
-        ${renderGalleryRow(options.filter(o => o.group === g))}
-      `).join('');
+      let activeGroup = groups[0];
+      const renderGrouped = () => {
+        const tabs = groups.map(g => `<div class="gallery-tab ${g === activeGroup ? 'active' : ''}" data-group="${g}">${g}</div>`).join('');
+        photoGallery.innerHTML = `<div class="gallery-tabs">${tabs}</div>${renderGalleryRow(options.filter(o => o.group === activeGroup))}`;
+        photoGallery.querySelectorAll('.gallery-tab').forEach(tab => {
+          tab.addEventListener('click', () => { activeGroup = tab.dataset.group; renderGrouped(); });
+        });
+      };
+      renderGrouped();
     } else {
       photoGallery.innerHTML = renderGalleryRow(options);
     }
