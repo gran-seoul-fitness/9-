@@ -249,12 +249,7 @@
   .mission-check svg{ width:16px; height:16px; }
   .mission-row-text{ flex:1; }
   .mission-row-title{ color:var(--text); font-size:13.5px; font-weight:700; }
-  .mission-row-sub{ color:var(--muted2); font-size:10.5px; margin-top:1px; }
-  .week-tag{
-    display:inline-block; color:var(--mint); font-weight:800;
-    background:rgba(62,227,199,0.1); border-radius:5px;
-    padding:1px 5px; margin-right:4px; font-size:9.5px;
-  }
+  .mission-row-sub{ color:var(--mint-soft); font-weight:700; font-size:10.5px; margin-top:1px; }
   .mission-row-arrow{ color:var(--muted2); font-size:14px; }
 
   /* ===== MISSION DETAIL MODAL ===== */
@@ -277,9 +272,15 @@
   .detail-backdrop.show .detail-card{ transform:translateY(0); }
 
   .gallery-label{ color:var(--muted2); font-size:10.5px; font-weight:700; margin-bottom:6px; letter-spacing:0.3px; }
+  .gallery-wrap{ margin-bottom:14px; }
+  .gallery-group-title{
+    color:var(--mint-soft); font-size:10px; font-weight:800;
+    margin:8px 0 6px; letter-spacing:0.2px;
+  }
+  .gallery-group-title:first-child{ margin-top:0; }
   .photo-gallery{
     display:flex; gap:8px; overflow-x:auto;
-    margin-bottom:14px; scroll-snap-type:x mandatory;
+    scroll-snap-type:x mandatory;
     padding-bottom:2px;
   }
   .photo-gallery::-webkit-scrollbar{ display:none; }
@@ -516,7 +517,7 @@
 <div class="detail-backdrop" id="detailBackdrop">
   <div class="detail-card">
     <div class="gallery-label" id="galleryLabel">기구 사진</div>
-    <div class="photo-gallery" id="photoGallery"></div>
+    <div class="gallery-wrap" id="photoGallery"></div>
 
     <div class="detail-title" id="detailTitle">등</div>
     <div class="detail-sets" id="detailSets"></div>
@@ -582,10 +583,13 @@
       { name:'천국의 계단', img:'images/equipment/cardio-stepmill.jpg' },
     ],
     gxclass: [
-      { name:'덤벨 트레이닝', img:'images/equipment/gx-dumbbell.jpg' },
-      { name:'파워코어트레이닝', img:'images/equipment/gx-powercore.jpg' },
-      { name:'요가', img:'images/equipment/gx-yoga.jpg' },
-      { name:'매트필라테스', img:'images/equipment/gx-matpilates.jpg' },
+      { name:'덤벨 트레이닝', img:'images/equipment/gx-dumbbell.jpg', group:'GX 수업' },
+      { name:'파워코어트레이닝', img:'images/equipment/gx-powercore.jpg', group:'GX 수업' },
+      { name:'요가', img:'images/equipment/gx-yoga.jpg', group:'GX 수업' },
+      { name:'매트필라테스', img:'images/equipment/gx-matpilates.jpg', group:'GX 수업' },
+      { name:'런지 스트레칭', img:'images/equipment/cooldown-lunge.jpg', group:'쿨다운' },
+      { name:'다운독 스트레칭', img:'images/equipment/cooldown-downdog.jpg', group:'쿨다운' },
+      { name:'플로우 스트레칭', img:'images/equipment/cooldown-plow.jpg', group:'쿨다운' },
     ],
     foamroll: [
       { name:'폼롤러', img:'images/equipment/stretch-foamroll.jpg' },
@@ -594,43 +598,37 @@
       { name:'FLEXABILITY ANTERIOR', img:'images/equipment/stretch-anterior.jpg' },
       { name:'FLEXABILITY POSTERIOR', img:'images/equipment/stretch-posterior.jpg' },
     ],
-    cooldown: [
-      { name:'런지 스트레칭', img:'images/equipment/cooldown-lunge.jpg' },
-      { name:'다운독 스트레칭', img:'images/equipment/cooldown-downdog.jpg' },
-      { name:'플로우 스트레칭', img:'images/equipment/cooldown-plow.jpg' },
-    ],
   };
 
   const ZONES = {
     weight: {
       name:'웨이트',
       missions:[
-        { id:'back', name:'등', week:2, sets:['3세트','12회'] },
-        { id:'chest', name:'가슴', week:2, sets:['3세트','12회'] },
-        { id:'legs', name:'하체', week:3, sets:['4세트','10회'] },
-        { id:'shoulder', name:'어깨', week:3, sets:['3세트','12회','사이드레터럴'] },
-        { id:'abs', name:'코어', week:4, sets:['3세트','15회'] },
+        { id:'back', name:'등', sets:['3세트','12회'] },
+        { id:'chest', name:'가슴', sets:['3세트','12회'] },
+        { id:'legs', name:'하체', sets:['4세트','10회'] },
+        { id:'shoulder', name:'어깨', sets:['3세트','12회','사이드레터럴'] },
+        { id:'abs', name:'코어', sets:['3세트','15회'] },
       ]
     },
     cardio: {
       name:'유산소',
       missions:[
-        { id:'treadmill', name:'러닝머신', week:1, sets:['20분','경사 3%'] },
-        { id:'bike', name:'사이클·로잉·스텝밀', week:2, sets:['15분'] },
+        { id:'treadmill', name:'러닝머신', sets:['20분','경사 3%'] },
+        { id:'bike', name:'사이클·로잉·스텝밀', sets:['15분'] },
       ]
     },
     gx: {
       name:'GX',
       missions:[
-        { id:'gxclass', name:'GX 그룹수업', week:4, sets:['1회 참여'], equipNoun:'매트' },
+        { id:'gxclass', name:'GX 수업·쿨다운', sets:['1회 참여'], equipNoun:'매트' },
       ]
     },
     stretch: {
       name:'스트레칭',
       missions:[
-        { id:'foamroll', name:'폼롤러', week:1, sets:['5분'] },
-        { id:'matstretch', name:'머신 스트레칭', week:3, sets:['10분'] },
-        { id:'cooldown', name:'쿨다운', week:4, sets:['5분'] },
+        { id:'foamroll', name:'폼롤러', sets:['5분'] },
+        { id:'matstretch', name:'머신 스트레칭', sets:['10분'] },
       ]
     }
   };
@@ -767,7 +765,7 @@
         <div class="mission-check ${m.status}">${checkIcon(m.status)}</div>
         <div class="mission-row-text">
           <div class="mission-row-title">${m.name}</div>
-          <div class="mission-row-sub"><span class="week-tag">${m.week}주차</span> ${m.sets.join(' · ')}</div>
+          <div class="mission-row-sub">${m.sets.join(' · ')}</div>
         </div>
         <div class="mission-row-arrow">›</div>
       </div>
@@ -798,12 +796,26 @@
     document.getElementById('galleryLabel').textContent = options.length > 1 ? `기구 사진 (아래 중 택1)` : '기구 사진';
     document.getElementById('galleryLabel').style.display = options.length ? '' : 'none';
     photoGallery.style.display = options.length ? '' : 'none';
-    photoGallery.innerHTML = options.map(opt => `
-      <div class="gallery-item ${options.length === 1 ? 'single' : ''}">
-        <img src="${opt.img}" />
-        <span class="detail-badge">${opt.name}</span>
-      </div>
-    `).join('');
+
+    function renderGalleryRow(opts){
+      return `<div class="photo-gallery">${opts.map(opt => `
+        <div class="gallery-item ${opts.length === 1 ? 'single' : ''}">
+          <img src="${opt.img}" />
+          <span class="detail-badge">${opt.name}</span>
+        </div>
+      `).join('')}</div>`;
+    }
+
+    const hasGroups = options.some(o => o.group);
+    if (hasGroups){
+      const groups = [...new Set(options.map(o => o.group))];
+      photoGallery.innerHTML = groups.map(g => `
+        <div class="gallery-group-title">${g}</div>
+        ${renderGalleryRow(options.filter(o => o.group === g))}
+      `).join('');
+    } else {
+      photoGallery.innerHTML = renderGalleryRow(options);
+    }
 
     if (mission.status === 'done'){
       availableBlock.style.display = 'none';
@@ -860,7 +872,6 @@
       zoneName: zone.name,
       missionId: currentMission.id,
       missionName: currentMission.name,
-      week: currentMission.week,
       sets: currentMission.sets,
       equipOptions: EQUIP_OPTIONS[currentMission.id] || [],
       equipPhoto: (EQUIP_OPTIONS[currentMission.id] || [])[0]?.img || '',

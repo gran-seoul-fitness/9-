@@ -106,9 +106,15 @@
     overflow:hidden;
     flex-shrink:0;
   }
+  .equip-gallery-wrap{ padding:10px 10px 0; }
+  .equip-gallery-group-title{
+    color:var(--mint-soft); font-size:10px; font-weight:800;
+    margin:8px 2px 6px; letter-spacing:0.2px;
+  }
+  .equip-gallery-group-title:first-child{ margin-top:0; }
   .equip-gallery{
     display:flex; gap:8px; overflow-x:auto;
-    padding:10px 10px 0; scroll-snap-type:x mandatory;
+    scroll-snap-type:x mandatory;
   }
   .equip-gallery::-webkit-scrollbar{ display:none; }
   .equip-gallery-item{
@@ -342,7 +348,7 @@
     </div>
 
     <div class="equip-card">
-      <div class="equip-gallery" id="equipGallery"></div>
+      <div class="equip-gallery-wrap" id="equipGallery"></div>
       <div class="equip-info">
         <div class="equip-name" id="equipName">덤벨 · 숄더프레스존</div>
         <div class="equip-sets" id="equipSets">
@@ -464,7 +470,7 @@
   // ===== gymmap.html에서 넘어온 미션 정보 =====
   const pending = JSON.parse(localStorage.getItem('gsPendingMission') || 'null') || {
     zoneKey:'weight', zoneName:'웨이트', missionId:'shoulder', missionName:'어깨',
-    week:3, sets:['3세트','12회','사이드레터럴 병행'], equipPhoto:'', equipNoun:'기구', doneBefore:6, total:12,
+    sets:['3세트','12회','사이드레터럴 병행'], equipPhoto:'', equipNoun:'기구', doneBefore:5, total:10,
     equipOptions: [
       { name:'숄더프레스', img:'images/equipment/shoulder-press.jpg' },
       { name:'덤벨존', img:'images/equipment/shoulder-dumbbell.jpg' },
@@ -492,18 +498,32 @@
 
   const equipNoun = pending.equipNoun || '기구';
 
-  document.getElementById('zoneEyebrow').textContent = `${pending.zoneName} · ${pending.week}주차`;
+  document.getElementById('zoneEyebrow').textContent = pending.zoneName;
   document.getElementById('equipName').textContent = `${pending.zoneName} · ${pending.missionName}`;
   document.getElementById('equipSets').innerHTML = pending.sets.map(s => `<span class="set-chip">${s}</span>`).join('');
   const equipOptions = pending.equipOptions && pending.equipOptions.length ? pending.equipOptions : (pending.equipPhoto ? [{ name: pending.missionName, img: pending.equipPhoto }] : []);
   const equipGalleryEl = document.getElementById('equipGallery');
   equipGalleryEl.style.display = equipOptions.length ? '' : 'none';
-  equipGalleryEl.innerHTML = equipOptions.map(opt => `
-    <div class="equip-gallery-item ${equipOptions.length === 1 ? 'single' : ''}">
-      <img src="${opt.img}" alt="${pending.zoneName} 존 ${opt.name}" />
-      <span class="equip-photo-tag">${opt.name}</span>
-    </div>
-  `).join('');
+
+  function renderEquipRow(opts){
+    return `<div class="equip-gallery">${opts.map(opt => `
+      <div class="equip-gallery-item ${opts.length === 1 ? 'single' : ''}">
+        <img src="${opt.img}" alt="${pending.zoneName} 존 ${opt.name}" />
+        <span class="equip-photo-tag">${opt.name}</span>
+      </div>
+    `).join('')}</div>`;
+  }
+
+  const equipHasGroups = equipOptions.some(o => o.group);
+  if (equipHasGroups){
+    const equipGroups = [...new Set(equipOptions.map(o => o.group))];
+    equipGalleryEl.innerHTML = equipGroups.map(g => `
+      <div class="equip-gallery-group-title">${g}</div>
+      ${renderEquipRow(equipOptions.filter(o => o.group === g))}
+    `).join('');
+  } else {
+    equipGalleryEl.innerHTML = renderEquipRow(equipOptions);
+  }
 
   document.getElementById('uploadSub').textContent = `${equipNoun}${josa(equipNoun, '이', '가')} 보이게 찍은 사진 한 장이면 충분해요.`;
   document.getElementById('uploadHint').textContent = `${equipNoun}${josa(equipNoun, '과', '와')} 함께 나와야 인증돼요`;

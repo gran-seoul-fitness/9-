@@ -4,6 +4,19 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>그랑서울 피트니스 - 캐릭터 선택</title>
+<script>
+  // 이미 캐릭터를 정한 회원이 다음날 다시 들어오면 바로 헬스장 맵으로.
+  // 단, 맵에서 뒤로가기로 캐릭터를 바꾸러 온 경우는 그대로 이 화면을 보여줘요.
+  (function(){
+    try {
+      var saved = JSON.parse(localStorage.getItem('gsCharacter') || 'null');
+      var cameFromMap = document.referrer && document.referrer.indexOf('gymmap.html') !== -1;
+      if (saved && saved.key && saved.name && !cameFromMap){
+        location.replace('gymmap.html');
+      }
+    } catch (e) {}
+  })();
+</script>
 <style>
   @font-face{ font-family:'NanumSquare'; src:url('fonts/NanumSquareL.woff2') format('woff2'); font-weight:300; font-display:swap; }
   @font-face{ font-family:'NanumSquare'; src:url('fonts/NanumSquareR.woff2') format('woff2'); font-weight:400; font-display:swap; }
@@ -223,6 +236,7 @@
   .name-input::placeholder{ color:var(--muted); font-weight:500; }
   .name-input:focus{ border-color:var(--mint); }
   .name-input.error{ border-color:var(--ember); }
+  .name-input:disabled{ opacity:0.7; cursor:not-allowed; }
   .name-error{
     display:none;
     color:var(--ember); font-size:11px; font-weight:600;
@@ -423,11 +437,11 @@
         <div class="reward-preview-title">4주 완주하면</div>
         <div class="reward-preview-sub">해비치 어메니티 3종 리워드</div>
       </div>
-      <div class="reward-preview-count"><b>12</b><span>미션</span></div>
+      <div class="reward-preview-count"><b>10</b><span>미션</span></div>
     </div>
 
     <div class="name-field">
-      <label for="nameInput"><span>이름 <span class="req">*필수</span></span><span class="count" id="nameCount">0/10</span></label>
+      <label for="nameInput"><span>이름 <span class="req" id="reqLabel">*필수</span></span><span class="count" id="nameCount">0/10</span></label>
       <input type="text" id="nameInput" class="name-input" placeholder="회원님 성함을 입력해주세요" maxlength="10" />
       <div class="name-error" id="nameError">이름을 입력해주세요</div>
     </div>
@@ -448,6 +462,7 @@
   const nameInput = document.getElementById('nameInput');
   const nameError = document.getElementById('nameError');
   const nameCount = document.getElementById('nameCount');
+  const reqLabel = document.getElementById('reqLabel');
   let selected = null;
 
   function updateNameCount(){
@@ -506,26 +521,34 @@
 
   cta.addEventListener('click', () => {
     if (!selected) return;
+    if (cta.disabled) return; // 중복 클릭(연타) 방지
     if (nameInput.value.trim().length === 0){
       nameInput.classList.add('error');
       nameError.classList.add('show');
       nameInput.focus();
       return;
     }
+
+    // 눌렀을 때 바로 반응이 보이도록: 즉시 버튼을 잠그고 문구를 바꿔요
+    // (반응이 느려 보여서 두 번 누르게 되는 걸 방지)
+    cta.disabled = true;
+    cta.textContent = '시작하는 중...';
+
     const stage = document.querySelector(`.char-card.selected .avatar-stage`);
     stage.style.animation = 'none';
     void stage.offsetWidth;
     stage.style.animation = 'bob 0.35s ease-in-out 3';
 
+    const nameToSave = nameInput.disabled ? nameInput.dataset.lockedName : nameInput.value.trim();
     localStorage.setItem('gsCharacter', JSON.stringify({
       key: selected,
-      name: nameInput.value.trim(),
+      name: nameToSave,
     }));
 
     const cardName = document.querySelector('.char-card.selected').dataset.name;
     toast.textContent = `완료! ${cardName}${josa(cardName, '으로', '로')} 챌린지를 시작해요`;
     toast.classList.add('show');
-    setTimeout(() => { window.location.href = 'gymmap.html'; }, 1400);
+    setTimeout(() => { window.location.href = 'gymmap.html'; }, 700);
   });
 
   // 이전에 고른 캐릭터/이름이 있으면 복원 (뒤로 돌아왔을 때 다시 고르지 않아도 되도록)
@@ -535,7 +558,14 @@
       if (!saved) return;
       const card = document.querySelector(`.char-card[data-key="${saved.key}"]`);
       if (card) card.click();
-      if (saved.name) nameInput.value = saved.name;
+      if (saved.name){
+        nameInput.value = saved.name;
+        // 이름은 한 번 정하면 바꿀 수 없어요 — 캐릭터는 다시 골라도 이름은 그대로 유지
+        nameInput.disabled = true;
+        nameInput.dataset.lockedName = saved.name;
+        reqLabel.textContent = '🔒 변경 불가';
+        reqLabel.style.color = 'var(--muted2)';
+      }
       updateNameCount();
       updateCtaState();
     } catch (e) {}
