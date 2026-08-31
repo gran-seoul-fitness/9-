@@ -504,8 +504,9 @@
   const character = JSON.parse(localStorage.getItem('gsCharacter') || 'null') || { key:'tiger', name:'회원' };
 
   // 구글 시트/드라이브에 실제로 기록하는 Apps Script 웹앱 주소예요.
-  // "배포 > 배포 관리"에서 확인한 실행 URL(.../exec)로 바꿔주세요.
-  const APPS_SCRIPT_URL = 'REPLACE_WITH_YOUR_WEB_APP_URL';
+  // ⚠️ 지금은 테스트용 "사본" 스프레드시트에 연결된 URL이에요 (2026-08-31).
+  // 원본 스프레드시트에 새로 배포하신 뒤 진짜 URL로 다시 바꿔야 실제 회원 기록이 저장돼요.
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx7l9reZpM9mjfmK-bHx640OioyFMGLkMptLHW-NwxtNxALIhsi_lkiCZH6SyETRZ5kDQ/exec';
 
   // 받침 유무에 따라 조사를 올바르게 선택 (은/는, 이/가 등)
   function josa(word, withBatchim, withoutBatchim){
