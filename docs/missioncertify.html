@@ -592,12 +592,12 @@
     fileInput.click();
   });
   // 요즘 폰 카메라 사진은 원본이 몇 MB씩 되기도 해서, 그대로 올리면 업로드가 오래 걸려요.
-  // 기구가 잘 보이기만 하면 되는 용도라 화질을 조금만 낮춰서(최대 1280px, JPEG 72%)
-  // 훨씬 가볍게 만든 다음 올려요. 보통 몇 초 걸리던 게 1초 안팎으로 줄어들어요.
+  // 기구가 맞는지 확인만 하면 되는 용도라 화질을 꽤 낮춰서(최대 800px, JPEG 50%)
+  // 훨씬 가볍게 만든 다음 올려요.
   function compressImage(dataUrl, callback){
     const img = new Image();
     img.onload = () => {
-      const MAX_DIM = 1280;
+      const MAX_DIM = 800;
       let { width, height } = img;
       if (width > MAX_DIM || height > MAX_DIM){
         const scale = MAX_DIM / Math.max(width, height);
@@ -608,7 +608,7 @@
       canvas.width = width;
       canvas.height = height;
       canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-      callback(canvas.toDataURL('image/jpeg', 0.72));
+      callback(canvas.toDataURL('image/jpeg', 0.5));
     };
     img.onerror = () => callback(dataUrl); // 혹시 실패하면 원본 그대로 사용
     img.src = dataUrl;
