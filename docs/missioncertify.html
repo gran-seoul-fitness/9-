@@ -254,6 +254,11 @@
   .confirm-label b{ color:var(--mint-soft); font-weight:800; }
 
   .cta-wrap{ padding:12px 22px 16px; margin-top:auto; }
+  .submit-error{
+    display:none; color:var(--ember); font-size:12px; font-weight:700;
+    text-align:center; margin:0 0 8px;
+  }
+  .submit-error.show{ display:block; }
   .cta{
     width:100%; padding:16px; border:none; border-radius:16px;
     font-family:'NanumSquare', sans-serif; font-size:15px; font-weight:900;
@@ -404,6 +409,7 @@
     </label>
 
     <div class="cta-wrap">
+      <div class="submit-error" id="submitError">전송에 실패했어요. 다시 시도해주세요.</div>
       <button class="cta" id="submitBtn">사진을 먼저 올려주세요</button>
     </div>
   </div>
@@ -496,6 +502,10 @@
     ],
   };
   const character = JSON.parse(localStorage.getItem('gsCharacter') || 'null') || { key:'tiger', name:'회원' };
+
+  // 구글 시트/드라이브에 실제로 기록하는 Apps Script 웹앱 주소예요.
+  // "배포 > 배포 관리"에서 확인한 실행 URL(.../exec)로 바꿔주세요.
+  const APPS_SCRIPT_URL = 'REPLACE_WITH_YOUR_WEB_APP_URL';
 
   // 받침 유무에 따라 조사를 올바르게 선택 (은/는, 이/가 등)
   function josa(word, withBatchim, withoutBatchim){
@@ -601,12 +611,43 @@
     updateSubmitState();
   });
 
-  submitBtn.addEventListener('click', () => {
+  const submitError = document.getElementById('submitError');
+
+  submitBtn.addEventListener('click', async () => {
     if (!pendingPhoto || !confirmCheckbox.checked || alreadyStampedToday) return;
+    if (submitBtn.disabled) return; // 중복 클릭(연타) 방지
+
+    submitError.classList.remove('show');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '전송하는 중...';
+
+    let photoUrl = pendingPhoto; // 서버 응답을 못 받으면(placeholder URL 등) 임시로 사진 원본을 씀
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Apps Script CORS 프리플라이트 회피용
+        body: JSON.stringify({
+          name: character.name,
+          zoneKey: pending.zoneKey,
+          missionId: pending.missionId,
+          title: pending.missionName,
+          equipment: equipOptions.map(o => o.name).join(' · '),
+          photo: pendingPhoto,
+        }),
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error || '알 수 없는 오류');
+      if (result.photoUrl) photoUrl = result.photoUrl;
+    } catch (err) {
+      submitBtn.disabled = false;
+      updateSubmitState();
+      submitError.classList.add('show');
+      return;
+    }
 
     const progress = savedProgress;
     progress.photos = progress.photos || {};
-    progress.photos[pending.missionId] = pendingPhoto;
+    progress.photos[pending.missionId] = photoUrl;
     progress.lastCertifyDate = todayStr();
     localStorage.setItem('gsProgress', JSON.stringify(progress));
     localStorage.removeItem('gsPendingMission');
