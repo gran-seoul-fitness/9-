@@ -252,11 +252,6 @@
   .confirm-label b{ color:var(--mint-soft); font-weight:800; }
 
   .cta-wrap{ padding:12px 22px 16px; margin-top:auto; }
-  .submit-error{
-    display:none; color:var(--ember); font-size:12px; font-weight:700;
-    text-align:center; margin:0 0 8px;
-  }
-  .submit-error.show{ display:block; }
   .cta{
     width:100%; padding:16px; border:none; border-radius:16px;
     font-family:'NanumSquare', sans-serif; font-size:15px; font-weight:900;
@@ -407,7 +402,6 @@
     </label>
 
     <div class="cta-wrap">
-      <div class="submit-error" id="submitError">전송에 실패했어요. 다시 시도해주세요.</div>
       <button class="cta" id="submitBtn">사진을 먼저 올려주세요</button>
     </div>
   </div>
@@ -634,19 +628,13 @@
     updateSubmitState();
   });
 
-  const submitError = document.getElementById('submitError');
-
   // 사람이 몰리는 시간(운동 끝나고 다 같이 인증할 때)엔 서버 저장 잠금이 붙잡혀 있어서
-  // 첫 시도가 실패할 수 있어요. 그럴 때 회원이 실패를 못 알아채고 그냥 넘어가서 기록이
-  // 빠지는 일이 없도록, 몇 번은 자동으로 다시 시도해요. 서버가 (이름,미션) 기준으로
-  // 덮어쓰기 처리를 해서 같은 요청이 여러 번 가도 중복 기록은 안 생겨요.
+  // 첫 시도가 실패할 수 있어요. 서버가 (이름,미션) 기준으로 덮어쓰기 처리를 해서
+  // 같은 요청이 여러 번 가도 중복 기록은 안 생겨요.
   async function submitWithRetry(payload, maxAttempts = 3) {
     let lastError = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      if (attempt > 1) {
-        submitBtn.textContent = `다시 시도하는 중... (${attempt}/${maxAttempts})`;
-        await new Promise(r => setTimeout(r, 700 * attempt));
-      }
+      if (attempt > 1) await new Promise(r => setTimeout(r, 700 * attempt));
       try {
         const res = await fetch(APPS_SCRIPT_URL, {
           method: 'POST',
@@ -663,38 +651,58 @@
     throw lastError;
   }
 
-  submitBtn.addEventListener('click', async () => {
+  // 서버 응답이 오면 진행 기록의 사진을 (임시로 넣어둔 압축본 대신) 실제 드라이브 URL로 바꿔줘요.
+  function replacePendingPhotoWithUrl(missionId, url) {
+    try {
+      const p = JSON.parse(localStorage.getItem('gsProgress') || 'null');
+      if (p && p.photos && p.photos[missionId]) {
+        p.photos[missionId] = url;
+        localStorage.setItem('gsProgress', JSON.stringify(p));
+      }
+    } catch (e) {}
+  }
+
+  // 재시도까지 다 실패하면, 나중에 앱을 다시 열 때 자동으로 다시 시도할 수 있도록
+  // 대기열에 남겨둬요 (gymmap.html에서 다음에 열릴 때 flushPendingUploads가 처리해요).
+  function queuePendingUpload(payload) {
+    try {
+      const queue = JSON.parse(localStorage.getItem('gsPendingUploads') || '[]');
+      queue.push({ ...payload, queuedAt: Date.now() });
+      localStorage.setItem('gsPendingUploads', JSON.stringify(queue));
+    } catch (e) {}
+  }
+
+  async function submitToServerInBackground(payload) {
+    try {
+      const result = await submitWithRetry(payload);
+      if (result.photoUrl) replacePendingPhotoWithUrl(payload.missionId, result.photoUrl);
+    } catch (err) {
+      queuePendingUpload(payload);
+    }
+  }
+
+  submitBtn.addEventListener('click', () => {
     if (!pendingPhoto || !confirmCheckbox.checked || alreadyStampedToday) return;
     if (submitBtn.disabled) return; // 중복 클릭(연타) 방지
-
-    submitError.classList.remove('show');
     submitBtn.disabled = true;
-    submitBtn.textContent = '전송하는 중...';
 
-    let photoUrl = pendingPhoto; // 서버 응답을 못 받으면(placeholder URL 등) 임시로 사진 원본을 씀
-    try {
-      const result = await submitWithRetry({
-        name: character.name,
-        zoneKey: pending.zoneKey,
-        missionId: pending.missionId,
-        title: pending.missionName,
-        equipment: equipOptions.map(o => o.name).join(' · '),
-        photo: pendingPhoto,
-      });
-      if (result.photoUrl) photoUrl = result.photoUrl;
-    } catch (err) {
-      submitBtn.disabled = false;
-      updateSubmitState();
-      submitError.classList.add('show');
-      return;
-    }
-
+    // 화면은 서버 응답을 기다리지 않고 바로 완료를 보여줘요 (체감 속도 우선).
+    // 실제 서버 전송/저장은 뒤에서 진행되고, 실패해도 대기열에 남아서 나중에 자동 재시도돼요.
     const progress = savedProgress;
     progress.photos = progress.photos || {};
-    progress.photos[pending.missionId] = photoUrl;
+    progress.photos[pending.missionId] = pendingPhoto; // 서버가 응답하면 실제 URL로 바뀌어요
     progress.lastCertifyDate = todayStr();
     localStorage.setItem('gsProgress', JSON.stringify(progress));
     localStorage.removeItem('gsPendingMission');
+
+    submitToServerInBackground({
+      name: character.name,
+      zoneKey: pending.zoneKey,
+      missionId: pending.missionId,
+      title: pending.missionName,
+      equipment: equipOptions.map(o => o.name).join(' · '),
+      photo: pendingPhoto,
+    });
 
     const doneAfter = Object.keys(progress.photos).length;
     const pct = Math.round(doneAfter / pending.total * 100);
