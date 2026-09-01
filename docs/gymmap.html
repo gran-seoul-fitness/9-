@@ -96,6 +96,14 @@
 
   .header-copy{ padding:8px 22px 0; }
   .eyebrow{ color:var(--mint); font-size:10px; font-weight:700; letter-spacing:3px; margin-bottom:4px; }
+
+  .sync-banner{
+    display:none; margin:10px 22px 0; padding:10px 14px;
+    background:rgba(255,107,74,0.12); border:1px solid rgba(255,107,74,0.35);
+    border-radius:12px; color:var(--ember); font-size:11.5px; font-weight:700;
+    line-height:1.5;
+  }
+  .sync-banner.show{ display:block; }
   h1{
     font-family:'NanumSquare', sans-serif; font-weight:900; color:var(--text);
     font-size:19px; line-height:1.25; margin:0 0 2px; letter-spacing:0.2px;
@@ -407,6 +415,8 @@
     <h1>오늘의 헬스장 <em>맵</em></h1>
   </div>
 
+  <div class="sync-banner" id="syncBanner">일부 인증 기록이 아직 서버에 저장되지 않았어요. 인터넷이 잘 되는 곳에서 앱을 잠시 열어두면 자동으로 다시 저장돼요.</div>
+
   <div class="map-wrap">
     <div class="map-stage">
     <svg class="map-svg" viewBox="0 0 320 380" preserveAspectRatio="xMidYMid meet">
@@ -704,6 +714,53 @@
     } catch (e) {}
   })();
   recomputeStatus();
+
+  // 구글 시트/드라이브에 실제로 기록하는 Apps Script 웹앱 주소예요. missioncertify.html과 동일해야 해요.
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzaToECEBXQX9nmqd4hB9otimqlmzOdy6FXINireQxGS1zZpg1ZmQgp8WtH44nROmbwnA/exec';
+
+  // missioncertify.html에서 인증 직후 서버 저장에 실패하면 "대기열"에 남겨둬요.
+  // 여기서(맵 화면을 열 때마다) 조용히 다시 시도해서, 회원이 눈치채지 못하는 사이에
+  // 대부분 자동으로 복구돼요. 하루 넘게 계속 실패하는 게 있으면 그때만 살짝 알려줘요.
+  async function flushPendingUploads(){
+    let queue;
+    try { queue = JSON.parse(localStorage.getItem('gsPendingUploads') || '[]'); } catch (e) { queue = []; }
+    if (!queue.length) return;
+
+    const byId = {};
+    allMissions().forEach(m => byId[m.id] = m);
+    const stillPending = [];
+
+    for (const item of queue) {
+      try {
+        const res = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ name: item.name, zoneKey: item.zoneKey, missionId: item.missionId, title: item.title, equipment: item.equipment, photo: item.photo }),
+        });
+        const result = await res.json();
+        if (!result.success) throw new Error(result.error || '실패');
+        if (result.photoUrl) {
+          try {
+            const p = JSON.parse(localStorage.getItem('gsProgress') || 'null');
+            if (p && p.photos && p.photos[item.missionId]) {
+              p.photos[item.missionId] = result.photoUrl;
+              localStorage.setItem('gsProgress', JSON.stringify(p));
+            }
+          } catch (e) {}
+          if (byId[item.missionId]) byId[item.missionId].userPhoto = result.photoUrl;
+        }
+      } catch (e) {
+        stillPending.push(item);
+      }
+    }
+
+    localStorage.setItem('gsPendingUploads', JSON.stringify(stillPending));
+
+    const DAY = 24 * 60 * 60 * 1000;
+    const hasStale = stillPending.some(item => Date.now() - item.queuedAt > DAY);
+    document.getElementById('syncBanner').classList.toggle('show', hasStale);
+  }
+  flushPendingUploads();
 
   // ===== 캐릭터 선택 화면에서 고른 캐릭터를 게이지 아바타에 반영 =====
   const AVATAR_BODIES = {
