@@ -513,8 +513,20 @@
   }
 
   // ===== 스탬프는 하루에 한 번만 — gymmap.html에서 넘어와도 여기서 한 번 더 확인 =====
+  // 브라우저 뒤로가기(bfcache)로 이 화면에 돌아오면 페이지가 새로 로드되지 않고
+  // 예전 상태 그대로 복원될 수 있어서, 값을 한 번만 읽어 캐싱하지 않고 매번
+  // localStorage에서 새로 읽어요. (그래야 방금 다른 미션을 인증하고 돌아왔어도 정확해요)
+  function isStampedToday(){
+    const p = JSON.parse(localStorage.getItem('gsProgress') || 'null') || { photos: {} };
+    return p.lastCertifyDate === todayStr();
+  }
   const savedProgress = JSON.parse(localStorage.getItem('gsProgress') || 'null') || { photos: {} };
-  const alreadyStampedToday = savedProgress.lastCertifyDate === todayStr();
+  let alreadyStampedToday = isStampedToday();
+
+  // bfcache에서 복원된 화면이면 완전히 새로고침해서 최신 상태(오늘 인증 여부 등)를 다시 읽어요.
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) window.location.reload();
+  });
 
   const equipNoun = pending.equipNoun || '기구';
 
@@ -693,7 +705,7 @@
   }
 
   submitBtn.addEventListener('click', () => {
-    if (!pendingPhoto || !confirmCheckbox.checked || alreadyStampedToday) return;
+    if (!pendingPhoto || !confirmCheckbox.checked || isStampedToday()) return;
     if (submitBtn.disabled) return; // 중복 클릭(연타) 방지
     submitBtn.disabled = true;
 

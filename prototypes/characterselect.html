@@ -16,6 +16,12 @@
       }
     } catch (e) {}
   })();
+
+  // 뒤로가기(bfcache)로 이 화면에 돌아오면 위 리다이렉트 체크가 다시 실행되지
+  // 않을 수 있어서, 그런 경우엔 완전히 새로고침해서 다시 확인하게 해요.
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) window.location.reload();
+  });
 </script>
 <script>
   // iOS Safari는 100vh를 주소창이 사라진 상태 기준으로 계산해서, 실제 보이는
